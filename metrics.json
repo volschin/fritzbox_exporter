@@ -250,6 +250,24 @@
 		"promType": "GaugeValue"
 	},
 	{
+		"service": "urn:dslforum-org:service:DeviceInfo:1",
+		"action": "GetInfo",
+		"result": "ModelName",
+		"promDesc": {
+			"fqName": "gateway_device_modelname",
+			"help": "gateway device model name",
+			"varLabels": [
+				"gateway",
+				"Description",
+				"ModelName",
+				"ProductClass",
+				"SoftwareVersion",
+				"HardwareVersion"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
 		"service": "urn:dslforum-org:service:LANEthernetInterfaceConfig:1",
 		"action": "GetStatistics",
 		"result": "Stats.BytesSent",

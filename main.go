@@ -190,8 +190,12 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 				lval = ""
 			}			
 			
-			// convert tolower to avoid problems with labels like hostname
-			labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
+			// convert hostname and MAC tolower to avoid problems with labels
+			if(l == "HostName" || l == "MACAddress" ) {
+				labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
+			} else {
+				labels[i] = fmt.Sprintf("%v", lval)
+			}
 		}
 	}
 	
