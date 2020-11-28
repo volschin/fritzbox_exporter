@@ -1,4 +1,4 @@
-// client for fritzbox lua API
+// Package lua_client implementes client for fritzbox lua UI API
 package lua_client
 
 // Copyright 2020 Andreas Krebs
@@ -32,7 +32,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-// session XML from login_sid.lua
+// SessionInfo XML from login_sid.lua
 type SessionInfo struct {
 	SID       string `xml:"SID"`
 	Challenge string `xml:"Challenge"`
@@ -40,45 +40,51 @@ type SessionInfo struct {
 	Rights    string `xml:"Rights"`
 }
 
+// LuaSession for storing connection data and SID
 type LuaSession struct {
-	BaseUrl     string
+	BaseURL     string
 	Username    string
 	Password    string
 	SID         string
 	SessionInfo SessionInfo
 }
 
+// LuaPage identified by path and params
 type LuaPage struct {
 	Path   string
 	Params string
 }
 
+// LuaMetricValueDefinition definition for a single metric
 type LuaMetricValueDefinition struct {
-	Path   string
-	Key    string
-	Labels []string
+	Path        string
+	Key         string
+	Labels      []string
+	FixedLabels map[string]string
 }
 
+// LuaMetricValue single value retrieved from lua page
 type LuaMetricValue struct {
 	Name   string
 	Value  string
 	Labels map[string]string
 }
 
+// LabelRename regex to replace labels to get rid of translations
 type LabelRename struct {
 	Pattern regexp.Regexp
 	Name    string
 }
 
-func (lua *LuaSession) do_Login(response string) error {
-	url_params := ""
+func (lua *LuaSession) doLogin(response string) error {
+	urlParams := ""
 	if response != "" {
-		url_params = fmt.Sprintf("?response=%s&user=%s", response, lua.Username)
+		urlParams = fmt.Sprintf("?response=%s&user=%s", response, lua.Username)
 	}
 
-	resp, err := http.Get(fmt.Sprintf("%s/login_sid.lua%s", lua.BaseUrl, url_params))
+	resp, err := http.Get(fmt.Sprintf("%s/login_sid.lua%s", lua.BaseURL, urlParams))
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error calling login_sid.lua: %s", err.Error()))
+		return fmt.Errorf("Error calling login_sid.lua: %s", err.Error())
 	}
 
 	defer resp.Body.Close()
@@ -86,15 +92,30 @@ func (lua *LuaSession) do_Login(response string) error {
 
 	err = dec.Decode(&lua.SessionInfo)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error decoding SessionInfo: %s", err.Error()))
+		return fmt.Errorf("Error decoding SessionInfo: %s", err.Error())
 	}
 
 	return nil
 }
 
+func (lmvDef *LuaMetricValueDefinition) createValue(name string, value string) LuaMetricValue {
+	lmv := LuaMetricValue{
+		Name:   name,
+		Value:  value,
+		Labels: make(map[string]string),
+	}
+
+	for l := range lmvDef.FixedLabels {
+		lmv.Labels[l] = lmvDef.FixedLabels[l]
+	}
+
+	return lmv
+}
+
+// Login perform loing and get SID
 func (lua *LuaSession) Login() error {
 
-	err := lua.do_Login("")
+	err := lua.doLogin("")
 	if err != nil {
 		return err
 	}
@@ -104,7 +125,7 @@ func (lua *LuaSession) Login() error {
 		// no SID, but challenge so calc response
 		hash := utf16leMd5(fmt.Sprintf("%s-%s", challenge, lua.Password))
 		response := fmt.Sprintf("%s-%x", challenge, hash)
-		err := lua.do_Login(response)
+		err := lua.doLogin(response)
 
 		if err != nil {
 			return err
@@ -121,8 +142,9 @@ func (lua *LuaSession) Login() error {
 	return nil
 }
 
+// LoadData load a lua bage and return content
 func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
-	data_url := fmt.Sprintf("%s/%s", lua.BaseUrl, page.Path)
+	dataURL := fmt.Sprintf("%s/%s", lua.BaseURL, page.Path)
 
 	callDone := false
 	var resp *http.Response
@@ -145,7 +167,7 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 			params += "&" + page.Params
 		}
 
-		resp, err = http.Post(data_url, "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(params)))
+		resp, err = http.Post(dataURL, "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(params)))
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +178,7 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 		} else if resp.StatusCode == http.StatusForbidden && !callDone {
 			// we assume SID is expired, so retry login
 		} else {
-			return nil, errors.New(fmt.Sprintf("data.lua failed: %s", resp.Status))
+			return nil, fmt.Errorf("data.lua failed: %s", resp.Status)
 		}
 	}
 
@@ -167,6 +189,16 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// ParseJSON generic parser for unmarshalling into map
+func ParseJSON(jsonData []byte) (map[string]interface{}, error) {
+	var data map[string]interface{}
+
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal(jsonData, &data)
+
+	return data, nil
 }
 
 func getRenamedLabel(labelRenames *[]LabelRename, label string) string {
@@ -181,9 +213,10 @@ func getRenamedLabel(labelRenames *[]LabelRename, label string) string {
 	return label
 }
 
+// GetMetrics get metrics from parsed lua page for definition and rename labels
 func GetMetrics(labelRenames *[]LabelRename, data map[string]interface{}, metricDef LuaMetricValueDefinition) ([]LuaMetricValue, error) {
 
-	var values []map[string]interface{}
+	var values []interface{}
 	var err error
 	if metricDef.Path != "" {
 		pathItems := strings.Split(metricDef.Path, ".")
@@ -192,7 +225,7 @@ func GetMetrics(labelRenames *[]LabelRename, data map[string]interface{}, metric
 			return nil, err
 		}
 	} else {
-		values = make([]map[string]interface{}, 1)
+		values = make([]interface{}, 1)
 		values[0] = data
 	}
 
@@ -203,23 +236,42 @@ func GetMetrics(labelRenames *[]LabelRename, data map[string]interface{}, metric
 	name += metricDef.Key
 
 	metrics := make([]LuaMetricValue, 0)
-	for _, valMap := range values {
-		value, exists := valMap[metricDef.Key]
-		if exists {
-			lmv := LuaMetricValue{
-				Name:   name,
-				Value:  toString(value),
-				Labels: make(map[string]string),
-			}
+	for _, valUntyped := range values {
+		switch v := valUntyped.(type) {
+		case map[string]interface{}:
+			value, exists := v[metricDef.Key]
+			if exists {
+				lmv := metricDef.createValue(name, toString(value))
 
-			for _, l := range metricDef.Labels {
-				lv, exists := valMap[l]
-				if exists {
-					lmv.Labels[l] = getRenamedLabel(labelRenames, toString(lv))
+				for _, l := range metricDef.Labels {
+					lv, exists := v[l]
+					if exists {
+						lmv.Labels[l] = getRenamedLabel(labelRenames, toString(lv))
+					}
 				}
+
+				metrics = append(metrics, lmv)
+			}
+		case []interface{}:
+			// since type is array there can't be any labels to differentiate values, so only one value supported !
+			index, err := strconv.Atoi(metricDef.Key)
+			if err != nil {
+				return nil, fmt.Errorf("item '%s' is an array, but index '%s' is not a number", metricDef.Path, metricDef.Key)
 			}
 
-			metrics = append(metrics, lmv)
+			if index < 0 {
+				// this is an index from the end of the values
+				index += len(v)
+			}
+
+			if index >= 0 && index < len(v) {
+				lmv := metricDef.createValue(name, toString(v[index]))
+				metrics = append(metrics, lmv)
+			} else {
+				return nil, fmt.Errorf("index %d is invalid for array '%s' with length %d", index, metricDef.Path, len(v))
+			}
+		default:
+			return nil, fmt.Errorf("item '%s' is not a hash or array, can't get value %s", metricDef.Path, metricDef.Key)
 		}
 	}
 
@@ -235,17 +287,8 @@ func utf16leMd5(s string) []byte {
 	return hasher.Sum(nil)
 }
 
-func ParseJSON(jsonData []byte) (map[string]interface{}, error) {
-	var data map[string]interface{}
-
-	// Unmarshal or Decode the JSON to the interface.
-	json.Unmarshal(jsonData, &data)
-
-	return data, nil
-}
-
 // helper for retrieving values from parsed JSON
-func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[string]interface{}, error) {
+func _getValues(data interface{}, pathItems []string, parentPath string) ([]interface{}, error) {
 
 	value := data
 	curPath := parentPath
@@ -255,7 +298,7 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[
 		case []interface{}:
 			if p == "*" {
 
-				values := make([]map[string]interface{}, 0, len(vv))
+				values := make([]interface{}, 0, len(vv))
 				for index, u := range vv {
 					subvals, err := _getValues(u, pathItems[i+1:], fmt.Sprintf("%s.%d", curPath, index))
 					if err != nil {
@@ -269,7 +312,7 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[
 			} else {
 				index, err := strconv.Atoi(p)
 				if err != nil {
-					return nil, errors.New(fmt.Sprintf("item '%s' is an array, but path item '%s' is neither '*' nor a number", curPath, p))
+					return nil, fmt.Errorf("item '%s' is an array, but path item '%s' is neither '*' nor a number", curPath, p)
 				}
 
 				if index < 0 {
@@ -280,7 +323,7 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[
 				if index >= 0 && index < len(vv) {
 					value = vv[index]
 				} else {
-					return nil, errors.New(fmt.Sprintf("index %d is invalid for array '%s' with length %d", index, curPath, len(vv)))
+					return nil, fmt.Errorf("index %d is invalid for array '%s' with length %d", index, curPath, len(vv))
 				}
 			}
 
@@ -288,11 +331,11 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[
 			var exits bool
 			value, exits = vv[p]
 			if !exits {
-				return nil, errors.New(fmt.Sprintf("key '%s' not existing in hash '%s'", p, curPath))
+				return nil, fmt.Errorf("key '%s' not existing in hash '%s'", p, curPath)
 			}
 
 		default:
-			return nil, errors.New(fmt.Sprintf("item '%s' is neither a hash or array", curPath))
+			return nil, fmt.Errorf("item '%s' is neither a hash or array", curPath)
 		}
 
 		if curPath == "" {
@@ -302,13 +345,8 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]map[
 		}
 	}
 
-	vm, isType := value.(map[string]interface{})
-	if !isType {
-		return nil, errors.New(fmt.Sprintf("item '%s' is not a hash", curPath))
-	}
-
-	values := make([]map[string]interface{}, 1)
-	values[0] = vm
+	values := make([]interface{}, 1)
+	values[0] = value
 	return values, nil
 }
 

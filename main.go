@@ -277,7 +277,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 				var ok bool
 				value, ok = provRes[aa.Value] // Value contains the result name for provider actions
 				if !ok {
-					fmt.Printf("provider action %s for %s.%s has no result %s", m.Service, m.Action, aa.Value)
+					fmt.Printf("provider action %s for %s.%s has no result", m.Service, m.Action, aa.Value)
 					collect_errors.Inc()
 					continue
 				}
@@ -334,7 +334,7 @@ func test() {
 	json.WriteString("[\n")
 
 	serviceKeys := []string{}
-	for k, _ := range root.Services {
+	for k := range root.Services {
 		serviceKeys = append(serviceKeys, k)
 	}
 	sort.Strings(serviceKeys)
@@ -343,7 +343,7 @@ func test() {
 		fmt.Printf("Service: %s (Url: %s)\n", k, s.ControlUrl)
 
 		actionKeys := []string{}
-		for l, _ := range s.Actions {
+		for l := range s.Actions {
 			actionKeys = append(actionKeys, l)
 		}
 		sort.Strings(actionKeys)
@@ -405,15 +405,14 @@ func test() {
 
 func testLuaCall() {
 	var luaSession lua.LuaSession
-	luaSession.BaseUrl = *flag_gateway_luaurl
+	luaSession.BaseURL = *flag_gateway_luaurl
 	luaSession.Username = *flag_gateway_username
 	luaSession.Password = *flag_gateway_password
 
 	var jsonData []byte
 	var err error
 
-	fmt.Println("calling login")
-	page := lua.LuaPage{"data.lua", "page=energy"}
+	page := lua.LuaPage{Path: "data.lua", Params: "page=ecoStat"}
 	jsonData, err = luaSession.LoadData(page)
 
 	if err != nil {
@@ -436,11 +435,22 @@ func testLuaCall() {
 	labelRenames = addLabelRename(labelRenames, "(?i)WLAN", "WLAN")
 	labelRenames = addLabelRename(labelRenames, "(?i)USB", "USB")
 
-	pidMetric := lua.LuaMetricValueDefinition{"", "pid", nil}
-	powerMetric := lua.LuaMetricValueDefinition{"data.drain.*", "actPerc", []string{"name"}}
+	pidMetric := lua.LuaMetricValueDefinition{Path: "", Key: "pid", Labels: nil}
+	//	powerMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*", Key: "actPerc", Labels: []string{"name"}}
+	tempMetric := lua.LuaMetricValueDefinition{Path: "data.cputemp.series.0", Key: "-1", Labels: nil}
+	loadMetric := lua.LuaMetricValueDefinition{Path: "data.cpuutil.series.0", Key: "-1", Labels: nil}
+	ramMetric1 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.0", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Fixed"}}
+	ramMetric2 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.1", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Dynamic"}}
+	ramMetric3 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.2", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Free"}}
+
 	//	fmt.Println(fmt.Sprintf("DATA: %v", data))
 	dumpMetric(&labelRenames, data, pidMetric)
-	dumpMetric(&labelRenames, data, powerMetric)
+	//	dumpMetric(&labelRenames, data, powerMetric)
+	dumpMetric(&labelRenames, data, tempMetric)
+	dumpMetric(&labelRenames, data, loadMetric)
+	dumpMetric(&labelRenames, data, ramMetric1)
+	dumpMetric(&labelRenames, data, ramMetric2)
+	dumpMetric(&labelRenames, data, ramMetric3)
 }
 
 func dumpMetric(labelRenames *[]lua.LabelRename, data map[string]interface{}, metricDef lua.LuaMetricValueDefinition) {
@@ -459,7 +469,7 @@ func addLabelRename(labelRenames []lua.LabelRename, pattern string, name string)
 	regex, err := regexp.Compile(pattern)
 
 	if err == nil {
-		return append(labelRenames, lua.LabelRename{*regex, name})
+		return append(labelRenames, lua.LabelRename{Pattern: *regex, Name: name})
 	}
 
 	return labelRenames
