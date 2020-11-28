@@ -213,6 +213,39 @@ func getRenamedLabel(labelRenames *[]LabelRename, label string) string {
 	return label
 }
 
+func getValueFromHashOrArray(mapOrArray interface{}, key string, path string) (interface{}, error) {
+	var value interface{}
+
+	switch moa := mapOrArray.(type) {
+	case map[string]interface{}:
+		var exists bool
+		value, exists = moa[key]
+		if !exists {
+			return nil, fmt.Errorf("hash '%s' has no element '%s'", path, key)
+		}
+	case []interface{}:
+		// since type is array there can't be any labels to differentiate values, so only one value supported !
+		index, err := strconv.Atoi(key)
+		if err != nil {
+			return nil, fmt.Errorf("item '%s' is an array, but index '%s' is not a number", path, key)
+		}
+
+		if index < 0 {
+			// this is an index from the end of the values
+			index += len(moa)
+		}
+
+		if index < 0 || index >= len(moa) {
+			return nil, fmt.Errorf("index %d is invalid for array '%s' with length %d", index, path, len(moa))
+		}
+		value = moa[index]
+	default:
+		return nil, fmt.Errorf("item '%s' is not a hash or array, can't get value %s", path, key)
+	}
+
+	return value, nil
+}
+
 // GetMetrics get metrics from parsed lua page for definition and rename labels
 func GetMetrics(labelRenames *[]LabelRename, data map[string]interface{}, metricDef LuaMetricValueDefinition) ([]LuaMetricValue, error) {
 
@@ -229,50 +262,51 @@ func GetMetrics(labelRenames *[]LabelRename, data map[string]interface{}, metric
 		values[0] = data
 	}
 
-	name := metricDef.Path
-	if name != "" {
-		name += "."
-	}
-	name += metricDef.Key
-
 	metrics := make([]LuaMetricValue, 0)
-	for _, valUntyped := range values {
-		switch v := valUntyped.(type) {
-		case map[string]interface{}:
-			value, exists := v[metricDef.Key]
-			if exists {
-				lmv := metricDef.createValue(name, toString(value))
+	keyItems := strings.Split(metricDef.Key, ".")
 
-				for _, l := range metricDef.Labels {
-					lv, exists := v[l]
-					if exists {
-						lmv.Labels[l] = getRenamedLabel(labelRenames, toString(lv))
-					}
-				}
+VALUE:
+	for _, pathVal := range values {
+		valUntyped := pathVal
+		path := metricDef.Path
 
-				metrics = append(metrics, lmv)
-			}
-		case []interface{}:
-			// since type is array there can't be any labels to differentiate values, so only one value supported !
-			index, err := strconv.Atoi(metricDef.Key)
+		// now handle if key is also splitted
+		for _, key := range keyItems {
+			valUntyped, err = getValueFromHashOrArray(valUntyped, key, path)
 			if err != nil {
-				return nil, fmt.Errorf("item '%s' is an array, but index '%s' is not a number", metricDef.Path, metricDef.Key)
+				// since we may have other values, we simply continue (should we report it?)
+				continue VALUE
 			}
 
-			if index < 0 {
-				// this is an index from the end of the values
-				index += len(v)
+			if path != "" {
+				path += "."
 			}
-
-			if index >= 0 && index < len(v) {
-				lmv := metricDef.createValue(name, toString(v[index]))
-				metrics = append(metrics, lmv)
-			} else {
-				return nil, fmt.Errorf("index %d is invalid for array '%s' with length %d", index, metricDef.Path, len(v))
-			}
-		default:
-			return nil, fmt.Errorf("item '%s' is not a hash or array, can't get value %s", metricDef.Path, metricDef.Key)
+			path += key
 		}
+
+		// create metric value
+		lmv := metricDef.createValue(path, toString(valUntyped))
+
+		// add labels if pathVal is a hash
+		valMap, isType := pathVal.(map[string]interface{})
+		if isType {
+			for _, l := range metricDef.Labels {
+				lv, exists := valMap[l]
+				if exists {
+					lmv.Labels[l] = getRenamedLabel(labelRenames, toString(lv))
+				}
+			}
+		}
+
+		metrics = append(metrics, lmv)
+	}
+
+	if len(metrics) == 0 {
+		if err == nil {
+			// normal we should already have an error, this is just a fallback
+			err = fmt.Errorf("no value found for item '%s' with key '%s'", metricDef.Path, metricDef.Key)
+		}
+		return nil, err
 	}
 
 	return metrics, nil
@@ -290,15 +324,16 @@ func utf16leMd5(s string) []byte {
 // helper for retrieving values from parsed JSON
 func _getValues(data interface{}, pathItems []string, parentPath string) ([]interface{}, error) {
 
+	var err error
+	values := make([]interface{}, 0)
 	value := data
 	curPath := parentPath
 
 	for i, p := range pathItems {
-		switch vv := value.(type) {
-		case []interface{}:
-			if p == "*" {
-
-				values := make([]interface{}, 0, len(vv))
+		if p == "*" {
+			// handle * case to get all values
+			switch vv := value.(type) {
+			case []interface{}:
 				for index, u := range vv {
 					subvals, err := _getValues(u, pathItems[i+1:], fmt.Sprintf("%s.%d", curPath, index))
 					if err != nil {
@@ -307,35 +342,26 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]inte
 
 					values = append(values, subvals...)
 				}
+			case map[string]interface{}:
+				for subK, subV := range vv {
+					subvals, err := _getValues(subV, pathItems[i+1:], fmt.Sprintf("%s.%s", curPath, subK))
+					if err != nil {
+						return nil, err
+					}
 
-				return values, nil
-			} else {
-				index, err := strconv.Atoi(p)
-				if err != nil {
-					return nil, fmt.Errorf("item '%s' is an array, but path item '%s' is neither '*' nor a number", curPath, p)
+					values = append(values, subvals...)
 				}
-
-				if index < 0 {
-					// this is an index from the end of the values
-					index += len(vv)
-				}
-
-				if index >= 0 && index < len(vv) {
-					value = vv[index]
-				} else {
-					return nil, fmt.Errorf("index %d is invalid for array '%s' with length %d", index, curPath, len(vv))
-				}
+			default:
+				return nil, fmt.Errorf("item '%s' is neither a hash or array", curPath)
 			}
 
-		case map[string]interface{}:
-			var exits bool
-			value, exits = vv[p]
-			if !exits {
-				return nil, fmt.Errorf("key '%s' not existing in hash '%s'", p, curPath)
-			}
+			return values, nil
+		}
 
-		default:
-			return nil, fmt.Errorf("item '%s' is neither a hash or array", curPath)
+		// this is a single value
+		value, err = getValueFromHashOrArray(value, p, curPath)
+		if err != nil {
+			return nil, err
 		}
 
 		if curPath == "" {
@@ -345,8 +371,8 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]inte
 		}
 	}
 
-	values := make([]interface{}, 1)
-	values[0] = value
+	values = append(values, value)
+
 	return values, nil
 }
 

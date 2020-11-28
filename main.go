@@ -412,7 +412,9 @@ func testLuaCall() {
 	var jsonData []byte
 	var err error
 
-	page := lua.LuaPage{Path: "data.lua", Params: "page=ecoStat"}
+	//page := lua.LuaPage{Path: "data.lua", Params: "page=energy"}
+	//page := lua.LuaPage{Path: "data.lua", Params: "page=ecoStat"}
+	page := lua.LuaPage{Path: "data.lua", Params: "page=usbOv"}
 	jsonData, err = luaSession.LoadData(page)
 
 	if err != nil {
@@ -434,23 +436,35 @@ func testLuaCall() {
 	labelRenames = addLabelRename(labelRenames, "(?i)FON", "Phone")
 	labelRenames = addLabelRename(labelRenames, "(?i)WLAN", "WLAN")
 	labelRenames = addLabelRename(labelRenames, "(?i)USB", "USB")
+	labelRenames = addLabelRename(labelRenames, "(?i)Speicher", "Storage")
 
 	pidMetric := lua.LuaMetricValueDefinition{Path: "", Key: "pid", Labels: nil}
-	//	powerMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*", Key: "actPerc", Labels: []string{"name"}}
-	tempMetric := lua.LuaMetricValueDefinition{Path: "data.cputemp.series.0", Key: "-1", Labels: nil}
-	loadMetric := lua.LuaMetricValueDefinition{Path: "data.cpuutil.series.0", Key: "-1", Labels: nil}
-	ramMetric1 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.0", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Fixed"}}
-	ramMetric2 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.1", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Dynamic"}}
-	ramMetric3 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.2", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Free"}}
-
-	//	fmt.Println(fmt.Sprintf("DATA: %v", data))
 	dumpMetric(&labelRenames, data, pidMetric)
-	//	dumpMetric(&labelRenames, data, powerMetric)
+
+	powerMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*", Key: "actPerc", Labels: []string{"name"}}
+	dumpMetric(&labelRenames, data, powerMetric)
+
+	tempMetric := lua.LuaMetricValueDefinition{Path: "data.cputemp.series.0", Key: "-1", Labels: nil}
 	dumpMetric(&labelRenames, data, tempMetric)
+
+	loadMetric := lua.LuaMetricValueDefinition{Path: "data.cpuutil.series.0", Key: "-1", Labels: nil}
 	dumpMetric(&labelRenames, data, loadMetric)
+
+	ramMetric1 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.0", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Fixed"}}
 	dumpMetric(&labelRenames, data, ramMetric1)
+
+	ramMetric2 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.1", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Dynamic"}}
 	dumpMetric(&labelRenames, data, ramMetric2)
+
+	ramMetric3 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.2", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Free"}}
 	dumpMetric(&labelRenames, data, ramMetric3)
+
+	usbMetric := lua.LuaMetricValueDefinition{Path: "data.usbOverview.devices.*", Key: "partitions.0.totalStorageInBytes", Labels: []string{"deviceType", "deviceName"}}
+	dumpMetric(&labelRenames, data, usbMetric)
+
+	usbMetric2 := lua.LuaMetricValueDefinition{Path: "data.usbOverview.devices.*", Key: "partitions.0.usedStorageInBytes", Labels: []string{"deviceType", "deviceName"}}
+	dumpMetric(&labelRenames, data, usbMetric2)
+
 }
 
 func dumpMetric(labelRenames *[]lua.LabelRename, data map[string]interface{}, metricDef lua.LuaMetricValueDefinition) {
