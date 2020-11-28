@@ -332,27 +332,34 @@ func _getValues(data interface{}, pathItems []string, parentPath string) ([]inte
 	for i, p := range pathItems {
 		if p == "*" {
 			// handle * case to get all values
+			var subvals []interface{}
 			switch vv := value.(type) {
 			case []interface{}:
 				for index, u := range vv {
-					subvals, err := _getValues(u, pathItems[i+1:], fmt.Sprintf("%s.%d", curPath, index))
-					if err != nil {
-						return nil, err
-					}
+					subvals, err = _getValues(u, pathItems[i+1:], fmt.Sprintf("%s.%d", curPath, index))
 
-					values = append(values, subvals...)
+					if subvals != nil {
+						values = append(values, subvals...)
+					}
 				}
 			case map[string]interface{}:
 				for subK, subV := range vv {
-					subvals, err := _getValues(subV, pathItems[i+1:], fmt.Sprintf("%s.%s", curPath, subK))
-					if err != nil {
-						return nil, err
-					}
+					subvals, err = _getValues(subV, pathItems[i+1:], fmt.Sprintf("%s.%s", curPath, subK))
 
-					values = append(values, subvals...)
+					if subvals != nil {
+						values = append(values, subvals...)
+					}
 				}
 			default:
-				return nil, fmt.Errorf("item '%s' is neither a hash or array", curPath)
+				err = fmt.Errorf("item '%s' is neither a hash or array", curPath)
+			}
+
+			if len(values) == 0 {
+				if err == nil {
+					err = fmt.Errorf("item '%s.*' has no values", curPath)
+				}
+
+				return nil, err
 			}
 
 			return values, nil

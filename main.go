@@ -91,6 +91,11 @@ type Metric struct {
 	MetricType prometheus.ValueType
 }
 
+type LuaMetric struct {
+	// initialized loading JSON
+
+}
+
 var metrics []*Metric
 
 type FritzboxCollector struct {
@@ -412,9 +417,9 @@ func testLuaCall() {
 	var jsonData []byte
 	var err error
 
-	//page := lua.LuaPage{Path: "data.lua", Params: "page=energy"}
+	page := lua.LuaPage{Path: "data.lua", Params: "page=energy"}
 	//page := lua.LuaPage{Path: "data.lua", Params: "page=ecoStat"}
-	page := lua.LuaPage{Path: "data.lua", Params: "page=usbOv"}
+	//page := lua.LuaPage{Path: "data.lua", Params: "page=usbOv"}
 	jsonData, err = luaSession.LoadData(page)
 
 	if err != nil {
@@ -436,13 +441,16 @@ func testLuaCall() {
 	labelRenames = addLabelRename(labelRenames, "(?i)FON", "Phone")
 	labelRenames = addLabelRename(labelRenames, "(?i)WLAN", "WLAN")
 	labelRenames = addLabelRename(labelRenames, "(?i)USB", "USB")
-	labelRenames = addLabelRename(labelRenames, "(?i)Speicher", "Storage")
+	labelRenames = addLabelRename(labelRenames, "(?i)Speicher.*FRITZ", "Internal eStorage")
 
 	pidMetric := lua.LuaMetricValueDefinition{Path: "", Key: "pid", Labels: nil}
 	dumpMetric(&labelRenames, data, pidMetric)
 
 	powerMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*", Key: "actPerc", Labels: []string{"name"}}
 	dumpMetric(&labelRenames, data, powerMetric)
+
+	lanMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*.lan.*", Key: "class", Labels: []string{"name"}}
+	dumpMetric(&labelRenames, data, lanMetric)
 
 	tempMetric := lua.LuaMetricValueDefinition{Path: "data.cputemp.series.0", Key: "-1", Labels: nil}
 	dumpMetric(&labelRenames, data, tempMetric)
