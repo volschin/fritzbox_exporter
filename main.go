@@ -41,14 +41,15 @@ import (
 const serviceLoadRetryTime = 1 * time.Minute
 
 var (
-	flag_luacall = flag.Bool("testLua", false, "test LUA") // TODO cleanup once completed
-
 	flag_test    = flag.Bool("test", false, "print all available metrics to stdout")
+	flag_luatest = flag.Bool("testLua", false, "read luaTest.json file make all contained calls ans print results")
 	flag_collect = flag.Bool("collect", false, "print configured metrics to stdout and exit")
 	flag_jsonout = flag.String("json-out", "", "store metrics also to JSON file when running test")
 
-	flag_addr         = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
-	flag_metrics_file = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
+	flag_addr             = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
+	flag_metrics_file     = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
+	flag_disable_lua      = flag.Bool("nolua", false, "disable collecting lua metrics")
+	flag_lua_metrics_file = flag.String("lua-metrics-file", "metrics-lua.json", "The JSON file with the lua metric definitions.")
 
 	flag_gateway_url      = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
 	flag_gateway_luaurl   = flag.String("gateway-luaurl", "http://fritz.box", "The URL of the FRITZ!Box UI")
@@ -91,12 +92,39 @@ type Metric struct {
 	MetricType prometheus.ValueType
 }
 
+type LuaTest struct {
+	Path   string `json:"path"`
+	Params string `json:"params"`
+}
+
+type LuaLabelRename struct {
+	MatchRegex  string `json:"matchRegex"`
+	RenameLabel string `json:"renameLabel"`
+}
+
 type LuaMetric struct {
 	// initialized loading JSON
+	Path        string            `json:"path"`
+	Params      string            `json:"params"`
+	ResultPath  string            `json:"resultPath"`
+	ResultKey   string            `json:"resultKey"`
+	OkValue     string            `json:"okValue"`
+	FixedLabels map[string]string `json:"fixedLabels"`
+	PromDesc    JSON_PromDesc     `json:"promDesc"`
+	PromType    string            `json:"promType"`
 
+	// initialized at startup
+	Desc       *prometheus.Desc
+	MetricType prometheus.ValueType
+}
+
+type LuaMetricsFile struct {
+	LabelRenames []LuaLabelRename `json:"labelRenames"`
+	Metrics      []LuaMetric      `json:"metrics"`
 }
 
 var metrics []*Metric
+var luaMetricsFile *LuaMetricsFile
 
 type FritzboxCollector struct {
 	Url      string
@@ -408,27 +436,41 @@ func test() {
 	}
 }
 
-func testLuaCall() {
-	var luaSession lua.LuaSession
-	luaSession.BaseURL = *flag_gateway_luaurl
-	luaSession.Username = *flag_gateway_username
-	luaSession.Password = *flag_gateway_password
+func testLua() {
 
-	var jsonData []byte
-	var err error
-
-	page := lua.LuaPage{Path: "data.lua", Params: "page=energy"}
-	//page := lua.LuaPage{Path: "data.lua", Params: "page=ecoStat"}
-	//page := lua.LuaPage{Path: "data.lua", Params: "page=usbOv"}
-	jsonData, err = luaSession.LoadData(page)
-
+	jsonData, err := ioutil.ReadFile("luaTest.json")
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("error reading luaTest.json:", err)
 		return
 	}
 
-	fmt.Println(fmt.Sprintf("JSON: %s", string(jsonData)))
+	var luaTests []LuaTest
+	err = json.Unmarshal(jsonData, &luaTests)
+	if err != nil {
+		fmt.Println("error parsing luaTest JSON:", err)
+		return
+	}
 
+	// create session struct and init params
+	luaSession := lua.LuaSession{BaseURL: *flag_gateway_luaurl, Username: *flag_gateway_username, Password: *flag_gateway_password}
+
+	for _, test := range luaTests {
+		fmt.Printf("TESTING: %s (%s)\n", test.Path, test.Params)
+
+		page := lua.LuaPage{Path: test.Path, Params: test.Params}
+		pageData, err := luaSession.LoadData(page)
+
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println(string(pageData))
+		}
+
+		fmt.Println("\n")
+	}
+}
+
+func extraceLuaData(jsonData []byte) {
 	data, err := lua.ParseJSON(jsonData)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -524,10 +566,11 @@ func main() {
 		return
 	}
 
-	if *flag_luacall {
-		testLuaCall()
+	if *flag_luatest {
+		testLua()
 		return
 	}
+
 	// read metrics
 	jsonData, err := ioutil.ReadFile(*flag_metrics_file)
 	if err != nil {
@@ -539,6 +582,20 @@ func main() {
 	if err != nil {
 		fmt.Println("error parsing JSON:", err)
 		return
+	}
+
+	if !*flag_disable_lua {
+		jsonData, err := ioutil.ReadFile(*flag_lua_metrics_file)
+		if err != nil {
+			fmt.Println("error reading lua metric file:", err)
+			return
+		}
+
+		err = json.Unmarshal(jsonData, &luaMetricsFile)
+		if err != nil {
+			fmt.Println("error parsing lua JSON:", err)
+			return
+		}
 	}
 
 	// init metrics

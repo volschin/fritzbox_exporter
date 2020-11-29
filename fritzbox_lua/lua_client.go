@@ -59,6 +59,7 @@ type LuaPage struct {
 type LuaMetricValueDefinition struct {
 	Path        string
 	Key         string
+	OkValue     string
 	Labels      []string
 	FixedLabels map[string]string
 }
@@ -95,10 +96,22 @@ func (lua *LuaSession) doLogin(response string) error {
 		return fmt.Errorf("Error decoding SessionInfo: %s", err.Error())
 	}
 
+	if lua.SessionInfo.BlockTime > 0 {
+		return fmt.Errorf("To many failed logins, login blocked for %d seconds", lua.SessionInfo.BlockTime)
+	}
+
 	return nil
 }
 
 func (lmvDef *LuaMetricValueDefinition) createValue(name string, value string) LuaMetricValue {
+	if lmvDef.OkValue != "" {
+		if value == lmvDef.OkValue {
+			value = "1"
+		} else {
+			value = "0"
+		}
+	}
+
 	lmv := LuaMetricValue{
 		Name:   name,
 		Value:  value,
@@ -144,7 +157,17 @@ func (lua *LuaSession) Login() error {
 
 // LoadData load a lua bage and return content
 func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
-	dataURL := fmt.Sprintf("%s/%s", lua.BaseURL, page.Path)
+	method := "POST"
+	path := page.Path
+
+	// handle method prefix
+	pathParts := strings.SplitN(path, ":", 2)
+	if len(pathParts) > 1 {
+		method = pathParts[0]
+		path = pathParts[1]
+	}
+
+	dataURL := fmt.Sprintf("%s/%s", lua.BaseURL, path)
 
 	callDone := false
 	var resp *http.Response
@@ -167,7 +190,14 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 			params += "&" + page.Params
 		}
 
-		resp, err = http.Post(dataURL, "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(params)))
+		if method == "POST" {
+			resp, err = http.Post(dataURL, "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(params)))
+		} else if method == "GET" {
+			resp, err = http.Get(dataURL + "?" + params)
+		} else {
+			err = fmt.Errorf("method %s is unsupported in path %s", method, page.Path)
+		}
+
 		if err != nil {
 			return nil, err
 		}

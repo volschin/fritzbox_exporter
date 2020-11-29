@@ -1,0 +1,162 @@
+{
+    "labelRenames": [
+        {
+            "matchRegex": "(?i)prozessor",
+            "renameLabel": "CPU"
+        },
+        {
+            "matchRegex": "(?i)system",
+            "renameLabel": "System"
+        },
+        {
+            "matchRegex": "(?i)DSL",
+            "renameLabel": "DSL"
+        },        
+        {
+            "matchRegex": "(?i)FON",
+            "renameLabel": "Phone"
+        },
+        {
+            "matchRegex": "(?i)WLAN",
+            "renameLabel": "WLAN"
+        },
+        {
+            "matchRegex": "(?i)USB",
+            "renameLabe": "USB"
+        }
+    ],
+    "metrics": [
+        {
+            "path": "data.lua",
+            "params": "page=energy",
+            "resultPath": "data.drain.*",
+            "resultKey": "actPerc",
+            "promDesc": {
+                "fqName": "gateway_data_energy_consumption",
+                "help": "percentage of energy consumed from data.lua?page=energy",
+                "varLabels": [
+                    "gateway", "name"
+                ]
+            },
+            "promType": "GaugeValue"
+        },       
+        {
+            "path": "data.lua",
+            "params": "page=energy",
+            "resultPath": "data.drain.*.lan.*",
+            "resultKey": "class",
+            "okValue": "green",
+            "promDesc": {
+                "fqName": "gateway_data_energy_lan_status",
+                "help": "status of LAN connection from data.lua?page=energy (1 = up)",
+                "varLabels": [
+                    "gateway", "name"
+                ]
+            },
+            "promType": "GaugeValue"
+        },
+        {
+            "path": "data.lua",
+            "params": "page=ecoStat",
+            "resultPath": "data.cputemp.series.0",
+            "resultKey": "-1",
+            "promDesc": {
+                "fqName": "gateway_data_ecostat_cputemp",
+                "help": "cpu temperature from data.lua?page=ecoStat",
+                "varLabels": [
+                    "gateway"
+                ]
+            },
+            "promType": "GaugeValue"
+        },
+        {
+            "path": "data.lua",
+            "params": "page=ecoStat",
+            "resultPath": "data.cpuutil.series.0",
+            "resultKey": "-1",
+            "promDesc": {
+                "fqName": "gateway_data_ecostat_cpuutil",
+                "help": "percentage of cpu utilization from data.lua?page=ecoStat",
+                "varLabels": [
+                    "gateway"
+                ]
+            },
+            "promType": "GaugeValue"
+        },        
+        {
+            "path": "data.lua",
+            "params": "page=ecoStat",
+            "resultPath": "data.ramusage.series.0",
+            "resultKey": "-1",
+            "fixedLabels": { "ram_type" : "Fixed" },
+            "promDesc": {
+                "fqName": "gateway_data_energy_consumption",
+                "help": "percentage of energy consumed from data.lua?page=energy",
+                "varLabels": [
+                    "gateway", "ram_type"
+                ]
+            },
+            "promType": "GaugeValue"
+        },
+        {
+            "path": "data.lua",
+            "params": "page=ecoStat",
+            "resultPath": "data.ramusage.series.1",
+            "resultKey": "-1",
+            "fixedLabels": { "ram_type" : "Dynamic" },
+            "promDesc": {
+                "fqName": "gateway_data_energy_consumption",
+                "help": "percentage of energy consumed from data.lua?page=energy",
+                "varLabels": [
+                    "gateway", "ram_type"
+                ]
+            },
+            "promType": "GaugeValue"
+        },
+        {
+            "path": "data.lua",
+            "params": "page=ecoStat",
+            "resultPath": "data.ramusage.series.2",
+            "resultKey": "-1",
+            "fixedLabels": { "ram_type" : "Free" },
+            "promDesc": {
+                "fqName": "gateway_data_energy_consumption",
+                "help": "percentage of energy consumed from data.lua?page=energy",
+                "varLabels": [
+                    "gateway", "ram_type"
+                ]
+            },
+            "promType": "GaugeValue"
+        },        
+        {
+            "path": "data.lua",
+            "params": "page=usbOv",
+            "resultPath": "data.usbOverview.devices.*",
+            "resultKey": "partitions.0.totalStorageInBytes",
+            "promDesc": {
+                "fqName": "gateway_data_usb_storage_total",
+                "help": "total storage in bytes from data.lua?page=usbOv",
+                "varLabels": [
+                    "gateway", "deviceType", "deviceName"
+                ]
+            },
+            "promType": "GaugeValue"
+        },
+        {
+            "path": "data.lua",
+            "params": "page=usbOv",
+            "resultPath": "data.usbOverview.devices.*",
+            "resultKey": "partitions.0.usedStorageInBytes",
+            "promDesc": {
+                "fqName": "gateway_data_usb_storage_used",
+                "help": "used storage in bytes from data.lua?page=usbOv",
+                "varLabels": [
+                    "gateway", "deviceType", "deviceName"
+                ]
+            },
+            "promType": "GaugeValue"
+        }        
+    ]
+
+}
+

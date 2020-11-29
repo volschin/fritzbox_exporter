@@ -4,7 +4,7 @@ This exporter exports some variables from an
 [AVM Fritzbox](http://avm.de/produkte/fritzbox/)
 to prometheus.
 
-This exporter is tested with a Fritzbox 7590 software version 07.12 and 07.20.
+This exporter is tested with a Fritzbox 7590 software version 07.12, 07.20 and 07.21.
 
 The goal of the fork is:
   - [x] allow passing of username / password using evironment variable
@@ -12,6 +12,7 @@ The goal of the fork is:
   - [x] move config of metrics to be exported to config file rather then code
   - [x] add config for additional metrics to collect (especially from TR-064 API)
   - [x] create a grafana dashboard consuming the additional metrics
+  - [ ] collect metrics from lua APIs not available in UPNP APIs
  
 Other changes:
   - replaced digest authentication code with own implementation
@@ -20,6 +21,7 @@ Other changes:
   - **New:** collect option to directly test collection of results
   - **New:** additional metrics to collect details about connected hosts and DECT devices
   - **New:** support to use results like hostname or MAC address as labels to metrics
+  - **New:** support for metrics from lua APIs (e.g. CPU temperature, utilization, ...)
  
 
 ## Building
