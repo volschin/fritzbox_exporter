@@ -94,8 +94,8 @@
             "resultKey": "-1",
             "fixedLabels": { "ram_type" : "Fixed" },
             "promDesc": {
-                "fqName": "gateway_data_energy_consumption",
-                "help": "percentage of energy consumed from data.lua?page=energy",
+                "fqName": "gateway_data_ecostat_ramusage",
+                "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
                     "gateway", "ram_type"
                 ]
@@ -109,8 +109,8 @@
             "resultKey": "-1",
             "fixedLabels": { "ram_type" : "Dynamic" },
             "promDesc": {
-                "fqName": "gateway_data_energy_consumption",
-                "help": "percentage of energy consumed from data.lua?page=energy",
+                "fqName": "gateway_data_ecostat_ramusage",
+                "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
                     "gateway", "ram_type"
                 ]
@@ -124,8 +124,8 @@
             "resultKey": "-1",
             "fixedLabels": { "ram_type" : "Free" },
             "promDesc": {
-                "fqName": "gateway_data_energy_consumption",
-                "help": "percentage of energy consumed from data.lua?page=energy",
+                "fqName": "gateway_data_ecostat_ramusage",
+                "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
                     "gateway", "ram_type"
                 ]
@@ -161,6 +161,5 @@
             "promType": "GaugeValue"
         }        
     ]
-
 }
 
