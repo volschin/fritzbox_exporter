@@ -22,8 +22,12 @@
         },
         {
             "matchRegex": "(?i)USB",
-            "renameLabe": "USB"
-        }
+            "renameLabel": "USB"
+        },
+        {
+            "matchRegex": "(?i)Speicher.*FRITZ",
+            "renameLabel": "Internal eStorage"
+        }        
     ],
     "metrics": [
         {

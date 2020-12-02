@@ -42,7 +42,7 @@ const serviceLoadRetryTime = 1 * time.Minute
 
 var (
 	flag_test    = flag.Bool("test", false, "print all available metrics to stdout")
-	flag_luatest = flag.Bool("testLua", false, "read luaTest.json file make all contained calls ans print results")
+	flag_luatest = flag.Bool("testLua", false, "read luaTest.json file make all contained calls and dump results")
 	flag_collect = flag.Bool("collect", false, "print configured metrics to stdout and exit")
 	flag_jsonout = flag.String("json-out", "", "store metrics also to JSON file when running test")
 
@@ -61,6 +61,12 @@ var (
 	collect_errors = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "fritzbox_exporter_collect_errors",
 		Help: "Number of collection errors.",
+	})
+)
+var (
+	lua_collect_errors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "fritzbox_exporter_lua_collect_errors",
+		Help: "Number of lua collection errors.",
 	})
 )
 
@@ -114,23 +120,29 @@ type LuaMetric struct {
 	PromType    string            `json:"promType"`
 
 	// initialized at startup
-	Desc       *prometheus.Desc
-	MetricType prometheus.ValueType
+	Desc         *prometheus.Desc
+	MetricType   prometheus.ValueType
+	LuaPage      lua.LuaPage
+	LuaMetricDef lua.LuaMetricValueDefinition
 }
 
 type LuaMetricsFile struct {
 	LabelRenames []LuaLabelRename `json:"labelRenames"`
-	Metrics      []LuaMetric      `json:"metrics"`
+	Metrics      []*LuaMetric     `json:"metrics"`
 }
 
 var metrics []*Metric
-var luaMetricsFile *LuaMetricsFile
+var luaMetrics []*LuaMetric
 
 type FritzboxCollector struct {
 	Url      string
 	Gateway  string
 	Username string
 	Password string
+
+	// support for lua collector
+	LuaSession   *lua.LuaSession
+	LabelRenames *[]lua.LabelRename
 
 	sync.Mutex // protects Root
 	Root       *upnp.Root
@@ -354,6 +366,81 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 		fc.ReportMetric(ch, m, result)
 	}
+
+	// if lua is enabled now also collect metrics
+	if fc.LuaSession != nil {
+		fc.collectLua(ch)
+	}
+}
+
+func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric) {
+	// create a map for caching results
+	var result_map = make(map[string]map[string]interface{})
+
+	for _, lm := range luaMetrics {
+		key := lm.Path + "_" + lm.Params
+
+		last_result := result_map[key]
+		if last_result == nil {
+			pageData, err := fc.LuaSession.LoadData(lm.LuaPage)
+
+			if err != nil {
+				fmt.Printf("Error loading %s for %s.%s: %s\n", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
+				lua_collect_errors.Inc()
+				continue
+			}
+
+			last_result, err = lua.ParseJSON(pageData)
+			if err != nil {
+				fmt.Printf("Error parsing JSON from %s for %s.%s: %s\n", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
+				lua_collect_errors.Inc()
+				continue
+			}
+
+			result_map[key] = last_result
+		}
+
+		metricVals, err := lua.GetMetrics(fc.LabelRenames, last_result, lm.LuaMetricDef)
+
+		if err != nil {
+			fmt.Printf("Error getting metric values for %s.%s: %s\n", lm.ResultPath, lm.ResultKey, err.Error())
+			lua_collect_errors.Inc()
+			continue
+		}
+
+		for _, mv := range metricVals {
+			fc.reportLuaMetric(ch, lm, mv)
+		}
+	}
+}
+
+func (fc *FritzboxCollector) reportLuaMetric(ch chan<- prometheus.Metric, lm *LuaMetric, value lua.LuaMetricValue) {
+
+	labels := make([]string, len(lm.PromDesc.VarLabels))
+	for i, l := range lm.PromDesc.VarLabels {
+		if l == "gateway" {
+			labels[i] = fc.Gateway
+		} else {
+			lval, ok := value.Labels[l]
+			if !ok {
+				fmt.Printf("%s.%s from %s?%s has no resul for label %s", lm.ResultPath, lm.ResultKey, lm.Path, lm.Params, l)
+				lval = ""
+			}
+
+			// convert hostname and MAC tolower to avoid problems with labels
+			if l == "HostName" || l == "MACAddress" {
+				labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
+			} else {
+				labels[i] = fmt.Sprintf("%v", lval)
+			}
+		}
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		lm.Desc,
+		lm.MetricType,
+		value.Value,
+		labels...)
 }
 
 func test() {
@@ -470,75 +557,6 @@ func testLua() {
 	}
 }
 
-func extraceLuaData(jsonData []byte) {
-	data, err := lua.ParseJSON(jsonData)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	labelRenames := make([]lua.LabelRename, 0)
-	labelRenames = addLabelRename(labelRenames, "(?i)prozessor", "CPU")
-	labelRenames = addLabelRename(labelRenames, "(?i)system", "System")
-	labelRenames = addLabelRename(labelRenames, "(?i)FON", "Phone")
-	labelRenames = addLabelRename(labelRenames, "(?i)WLAN", "WLAN")
-	labelRenames = addLabelRename(labelRenames, "(?i)USB", "USB")
-	labelRenames = addLabelRename(labelRenames, "(?i)Speicher.*FRITZ", "Internal eStorage")
-
-	pidMetric := lua.LuaMetricValueDefinition{Path: "", Key: "pid", Labels: nil}
-	dumpMetric(&labelRenames, data, pidMetric)
-
-	powerMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*", Key: "actPerc", Labels: []string{"name"}}
-	dumpMetric(&labelRenames, data, powerMetric)
-
-	lanMetric := lua.LuaMetricValueDefinition{Path: "data.drain.*.lan.*", Key: "class", Labels: []string{"name"}}
-	dumpMetric(&labelRenames, data, lanMetric)
-
-	tempMetric := lua.LuaMetricValueDefinition{Path: "data.cputemp.series.0", Key: "-1", Labels: nil}
-	dumpMetric(&labelRenames, data, tempMetric)
-
-	loadMetric := lua.LuaMetricValueDefinition{Path: "data.cpuutil.series.0", Key: "-1", Labels: nil}
-	dumpMetric(&labelRenames, data, loadMetric)
-
-	ramMetric1 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.0", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Fixed"}}
-	dumpMetric(&labelRenames, data, ramMetric1)
-
-	ramMetric2 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.1", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Dynamic"}}
-	dumpMetric(&labelRenames, data, ramMetric2)
-
-	ramMetric3 := lua.LuaMetricValueDefinition{Path: "data.ramusage.series.2", Key: "-1", Labels: nil, FixedLabels: map[string]string{"ram_type": "Free"}}
-	dumpMetric(&labelRenames, data, ramMetric3)
-
-	usbMetric := lua.LuaMetricValueDefinition{Path: "data.usbOverview.devices.*", Key: "partitions.0.totalStorageInBytes", Labels: []string{"deviceType", "deviceName"}}
-	dumpMetric(&labelRenames, data, usbMetric)
-
-	usbMetric2 := lua.LuaMetricValueDefinition{Path: "data.usbOverview.devices.*", Key: "partitions.0.usedStorageInBytes", Labels: []string{"deviceType", "deviceName"}}
-	dumpMetric(&labelRenames, data, usbMetric2)
-
-}
-
-func dumpMetric(labelRenames *[]lua.LabelRename, data map[string]interface{}, metricDef lua.LuaMetricValueDefinition) {
-
-	metrics, err := lua.GetMetrics(labelRenames, data, metricDef)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	fmt.Println(fmt.Sprintf("Metrics: %v", metrics))
-}
-
-func addLabelRename(labelRenames []lua.LabelRename, pattern string, name string) []lua.LabelRename {
-	regex, err := regexp.Compile(pattern)
-
-	if err == nil {
-		return append(labelRenames, lua.LabelRename{Pattern: *regex, Name: name})
-	}
-
-	return labelRenames
-}
-
 func getValueType(vt string) prometheus.ValueType {
 	switch vt {
 	case "CounterValue":
@@ -584,6 +602,8 @@ func main() {
 		return
 	}
 
+	var luaSession *lua.LuaSession
+	var luaLabelRenames *[]lua.LabelRename
 	if !*flag_disable_lua {
 		jsonData, err := ioutil.ReadFile(*flag_lua_metrics_file)
 		if err != nil {
@@ -591,10 +611,59 @@ func main() {
 			return
 		}
 
-		err = json.Unmarshal(jsonData, &luaMetricsFile)
+		var lmf *LuaMetricsFile
+		err = json.Unmarshal(jsonData, &lmf)
 		if err != nil {
 			fmt.Println("error parsing lua JSON:", err)
 			return
+		}
+
+		// init label renames
+		lblRen := make([]lua.LabelRename, 0)
+		for _, ren := range lmf.LabelRenames {
+			regex, err := regexp.Compile(ren.MatchRegex)
+
+			if err != nil {
+				fmt.Println("error compiling lua rename regex:", err)
+				return
+			}
+
+			lblRen = append(lblRen, lua.LabelRename{Pattern: *regex, Name: ren.RenameLabel})
+		}
+		luaLabelRenames = &lblRen
+
+		// init metrics
+		luaMetrics = lmf.Metrics
+		for _, lm := range luaMetrics {
+			pd := lm.PromDesc
+
+			// make labels lower case
+			labels := make([]string, len(pd.VarLabels))
+			for i, l := range pd.VarLabels {
+				labels[i] = strings.ToLower(l)
+			}
+
+			lm.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
+			lm.MetricType = getValueType(lm.PromType)
+
+			lm.LuaPage = lua.LuaPage{
+				Path:   lm.Path,
+				Params: lm.Params,
+			}
+
+			lm.LuaMetricDef = lua.LuaMetricValueDefinition{
+				Path:        lm.ResultPath,
+				Key:         lm.ResultKey,
+				OkValue:     lm.OkValue,
+				Labels:      pd.VarLabels,
+				FixedLabels: lm.FixedLabels,
+			}
+		}
+
+		luaSession = &lua.LuaSession{
+			BaseURL:  *flag_gateway_luaurl,
+			Username: *flag_gateway_username,
+			Password: *flag_gateway_password,
 		}
 	}
 
@@ -617,6 +686,9 @@ func main() {
 		Gateway:  u.Hostname(),
 		Username: *flag_gateway_username,
 		Password: *flag_gateway_password,
+
+		LuaSession:   luaSession,
+		LabelRenames: luaLabelRenames,
 	}
 
 	if *flag_collect {
@@ -624,6 +696,9 @@ func main() {
 
 		prometheus.MustRegister(collector)
 		prometheus.MustRegister(collect_errors)
+		if luaSession != nil {
+			prometheus.MustRegister(lua_collect_errors)
+		}
 
 		fmt.Println("collecting metrics via http")
 
@@ -641,6 +716,9 @@ func main() {
 
 	prometheus.MustRegister(collector)
 	prometheus.MustRegister(collect_errors)
+	if luaSession != nil {
+		prometheus.MustRegister(lua_collect_errors)
+	}
 
 	http.Handle("/metrics", promhttp.Handler())
 	fmt.Printf("metrics available at http://%s/metrics\n", *flag_addr)

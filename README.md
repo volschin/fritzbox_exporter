@@ -12,7 +12,7 @@ The goal of the fork is:
   - [x] move config of metrics to be exported to config file rather then code
   - [x] add config for additional metrics to collect (especially from TR-064 API)
   - [x] create a grafana dashboard consuming the additional metrics
-  - [ ] collect metrics from lua APIs not available in UPNP APIs
+  - [x] collect metrics from lua APIs not available in UPNP APIs
  
 Other changes:
   - replaced digest authentication code with own implementation
@@ -49,6 +49,8 @@ Usage:
         The password for the FRITZ!Box UPnP service
       -test
         print all available SOAP calls and their results (if call possible) to stdout
+      -testLua
+        read luaTest.json file make all contained calls and dump results
       -collect
         collect metrics once print to stdout and exit
       -json-out string

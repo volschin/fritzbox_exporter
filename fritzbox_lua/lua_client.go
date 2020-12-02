@@ -67,7 +67,7 @@ type LuaMetricValueDefinition struct {
 // LuaMetricValue single value retrieved from lua page
 type LuaMetricValue struct {
 	Name   string
-	Value  string
+	Value  float64
 	Labels map[string]string
 }
 
@@ -103,15 +103,7 @@ func (lua *LuaSession) doLogin(response string) error {
 	return nil
 }
 
-func (lmvDef *LuaMetricValueDefinition) createValue(name string, value string) LuaMetricValue {
-	if lmvDef.OkValue != "" {
-		if value == lmvDef.OkValue {
-			value = "1"
-		} else {
-			value = "0"
-		}
-	}
-
+func (lmvDef *LuaMetricValueDefinition) createValue(name string, value float64) LuaMetricValue {
 	lmv := LuaMetricValue{
 		Name:   name,
 		Value:  value,
@@ -208,7 +200,7 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 		} else if resp.StatusCode == http.StatusForbidden && !callDone {
 			// we assume SID is expired, so retry login
 		} else {
-			return nil, fmt.Errorf("data.lua failed: %s", resp.Status)
+			return nil, fmt.Errorf("%s failed: %s", page.Path, resp.Status)
 		}
 	}
 
@@ -314,8 +306,24 @@ VALUE:
 			path += key
 		}
 
+		var sVal = toString(valUntyped)
+		var floatVal float64
+		if metricDef.OkValue != "" {
+			if metricDef.OkValue == sVal {
+				floatVal = 1
+			} else {
+				floatVal = 0
+			}
+		} else {
+			// convert value to float
+			floatVal, err = strconv.ParseFloat(sVal, 64)
+			if err != nil {
+				continue VALUE
+			}
+		}
+
 		// create metric value
-		lmv := metricDef.createValue(path, toString(valUntyped))
+		lmv := metricDef.createValue(path, floatVal)
 
 		// add labels if pathVal is a hash
 		valMap, isType := pathVal.(map[string]interface{})
