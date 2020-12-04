@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -39,6 +38,9 @@ import (
 )
 
 const serviceLoadRetryTime = 1 * time.Minute
+
+// minimum TTL for cached results in seconds
+const minCacheTTL = 30
 
 var (
 	flag_test    = flag.Bool("test", false, "print all available metrics to stdout")
@@ -69,6 +71,26 @@ var (
 		Help: "Number of lua collection errors.",
 	})
 )
+var collectLuaResultsCached = prometheus.NewCounter(prometheus.CounterOpts{
+	Name:        "fritzbox_exporter_results_cached",
+	Help:        "Number of results taken from cache.",
+	ConstLabels: prometheus.Labels{"Cache": "LUA"},
+})
+var collectUpnpResultsCached = prometheus.NewCounter(prometheus.CounterOpts{
+	Name:        "fritzbox_exporter_results_cached",
+	Help:        "Number of results taken from cache.",
+	ConstLabels: prometheus.Labels{"Cache": "UPNP"},
+})
+var collectLuaResultsLoaded = prometheus.NewCounter(prometheus.CounterOpts{
+	Name:        "fritzbox_exporter_results_loaded",
+	Help:        "Number of results loaded from fritzbox.",
+	ConstLabels: prometheus.Labels{"Cache": "LUA"},
+})
+var collectUpnpResultsLoaded = prometheus.NewCounter(prometheus.CounterOpts{
+	Name:        "fritzbox_exporter_results_loaded",
+	Help:        "Number of results loaded from fritzbox.",
+	ConstLabels: prometheus.Labels{"Cache": "UPNP"},
+})
 
 type JSON_PromDesc struct {
 	FqName      string            `json:"fqName"`
@@ -93,6 +115,7 @@ type Metric struct {
 	OkValue        string        `json:"okValue"`
 	PromDesc       JSON_PromDesc `json:"promDesc"`
 	PromType       string        `json:"promType"`
+	CacheEntryTTL  int64         `json:"cacheEntryTTL"`
 
 	// initialized at startup
 	Desc       *prometheus.Desc
@@ -111,13 +134,14 @@ type LuaLabelRename struct {
 
 type LuaMetric struct {
 	// initialized loading JSON
-	Path       string        `json:"path"`
-	Params     string        `json:"params"`
-	ResultPath string        `json:"resultPath"`
-	ResultKey  string        `json:"resultKey"`
-	OkValue    string        `json:"okValue"`
-	PromDesc   JSON_PromDesc `json:"promDesc"`
-	PromType   string        `json:"promType"`
+	Path          string        `json:"path"`
+	Params        string        `json:"params"`
+	ResultPath    string        `json:"resultPath"`
+	ResultKey     string        `json:"resultKey"`
+	OkValue       string        `json:"okValue"`
+	PromDesc      JSON_PromDesc `json:"promDesc"`
+	PromType      string        `json:"promType"`
+	CacheEntryTTL int64         `json:"cacheEntryTTL"`
 
 	// initialized at startup
 	Desc         *prometheus.Desc
@@ -131,8 +155,20 @@ type LuaMetricsFile struct {
 	Metrics      []*LuaMetric     `json:"metrics"`
 }
 
+type UpnpCacheEntry struct {
+	Timestamp int64
+	Result    *upnp.Result
+}
+
+type LuaCacheEntry struct {
+	Timestamp int64
+	Result    *map[string]interface{}
+}
+
 var metrics []*Metric
 var luaMetrics []*LuaMetric
+var upnpCache map[string]*UpnpCacheEntry
+var luaCache map[string]*LuaCacheEntry
 
 type FritzboxCollector struct {
 	Url      string
@@ -255,39 +291,50 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 		labels...)
 }
 
-func (fc *FritzboxCollector) GetActionResult(result_map map[string]upnp.Result, serviceType string, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
+func (fc *FritzboxCollector) GetActionResult(metric *Metric, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
 
-	m_key := serviceType + "|" + actionName
+	key := metric.Service + "|" + actionName
 
 	// for calls with argument also add arguement name and value to key
 	if actionArg != nil {
-
-		m_key += "|" + actionArg.Name + "|" + fmt.Sprintf("%v", actionArg.Value)
+		key += "|" + actionArg.Name + "|" + fmt.Sprintf("%v", actionArg.Value)
 	}
 
-	last_result := result_map[m_key]
-	if last_result == nil {
-		service, ok := fc.Root.Services[serviceType]
+	now := time.Now().Unix()
+
+	cacheEntry := upnpCache[key]
+	if cacheEntry == nil {
+		cacheEntry = &UpnpCacheEntry{}
+		upnpCache[key] = cacheEntry
+	} else if now-cacheEntry.Timestamp > metric.CacheEntryTTL {
+		cacheEntry.Result = nil
+	}
+
+	if cacheEntry.Result == nil {
+		service, ok := fc.Root.Services[metric.Service]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("service %s not found", serviceType))
+			return nil, fmt.Errorf("service %s not found", metric.Service)
 		}
 
 		action, ok := service.Actions[actionName]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("action %s not found in service %s", actionName, serviceType))
+			return nil, fmt.Errorf("action %s not found in service %s", actionName, metric.Service)
 		}
 
-		var err error
-		last_result, err = action.Call(actionArg)
+		data, err := action.Call(actionArg)
 
 		if err != nil {
 			return nil, err
 		}
 
-		result_map[m_key] = last_result
+		cacheEntry.Timestamp = now
+		cacheEntry.Result = &data
+		collectUpnpResultsCached.Inc()
+	} else {
+		collectUpnpResultsLoaded.Inc()
 	}
 
-	return last_result, nil
+	return *cacheEntry.Result, nil
 }
 
 func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
@@ -300,9 +347,6 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// create a map for caching results
-	var result_map = make(map[string]upnp.Result)
-
 	for _, m := range metrics {
 		var actArg *upnp.ActionArgument
 		if m.ActionArgument != nil {
@@ -311,7 +355,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			value = aa.Value
 
 			if aa.ProviderAction != "" {
-				provRes, err := fc.GetActionResult(result_map, m.Service, aa.ProviderAction, nil)
+				provRes, err := fc.GetActionResult(m, aa.ProviderAction, nil)
 
 				if err != nil {
 					fmt.Printf("Error getting provider action %s result for %s.%s: %s\n", aa.ProviderAction, m.Service, m.Action, err.Error())
@@ -339,7 +383,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 				for i := 0; i < count; i++ {
 					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i}
-					result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
+					result, err := fc.GetActionResult(m, m.Action, actArg)
 
 					if err != nil {
 						fmt.Println(err.Error())
@@ -356,7 +400,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
-		result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
+		result, err := fc.GetActionResult(m, m.Action, actArg)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -375,13 +419,20 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric) {
 	// create a map for caching results
-	var result_map = make(map[string]map[string]interface{})
+	now := time.Now().Unix()
 
 	for _, lm := range luaMetrics {
 		key := lm.Path + "_" + lm.Params
 
-		last_result := result_map[key]
-		if last_result == nil {
+		cacheEntry := luaCache[key]
+		if cacheEntry == nil {
+			cacheEntry = &LuaCacheEntry{}
+			luaCache[key] = cacheEntry
+		} else if now-cacheEntry.Timestamp > lm.CacheEntryTTL {
+			cacheEntry.Result = nil
+		}
+
+		if cacheEntry.Result == nil {
 			pageData, err := fc.LuaSession.LoadData(lm.LuaPage)
 
 			if err != nil {
@@ -390,17 +441,22 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			last_result, err = lua.ParseJSON(pageData)
+			var data map[string]interface{}
+			data, err = lua.ParseJSON(pageData)
 			if err != nil {
 				fmt.Printf("Error parsing JSON from %s for %s.%s: %s\n", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
 				lua_collect_errors.Inc()
 				continue
 			}
 
-			result_map[key] = last_result
+			cacheEntry.Result = &data
+			cacheEntry.Timestamp = now
+			collectLuaResultsLoaded.Inc()
+		} else {
+			collectLuaResultsCached.Inc()
 		}
 
-		metricVals, err := lua.GetMetrics(fc.LabelRenames, last_result, lm.LuaMetricDef)
+		metricVals, err := lua.GetMetrics(fc.LabelRenames, *cacheEntry.Result, lm.LuaMetricDef)
 
 		if err != nil {
 			fmt.Printf("Error getting metric values for %s.%s: %s\n", lm.ResultPath, lm.ResultKey, err.Error())
@@ -602,6 +658,9 @@ func main() {
 		return
 	}
 
+	// create a map for caching results
+	upnpCache = make(map[string]*UpnpCacheEntry)
+
 	var luaSession *lua.LuaSession
 	var luaLabelRenames *[]lua.LabelRename
 	if !*flag_disable_lua {
@@ -617,6 +676,9 @@ func main() {
 			fmt.Println("error parsing lua JSON:", err)
 			return
 		}
+
+		// create a map for caching results
+		luaCache = make(map[string]*LuaCacheEntry)
 
 		// init label renames
 		lblRen := make([]lua.LabelRename, 0)
@@ -657,6 +719,11 @@ func main() {
 				OkValue: lm.OkValue,
 				Labels:  pd.VarLabels,
 			}
+
+			// init TTL
+			if lm.CacheEntryTTL < minCacheTTL {
+				lm.CacheEntryTTL = minCacheTTL
+			}
 		}
 
 		luaSession = &lua.LuaSession{
@@ -678,6 +745,11 @@ func main() {
 
 		m.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
 		m.MetricType = getValueType(m.PromType)
+
+		// init TTL
+		if m.CacheEntryTTL < minCacheTTL {
+			m.CacheEntryTTL = minCacheTTL
+		}
 	}
 
 	collector := &FritzboxCollector{
@@ -715,8 +787,13 @@ func main() {
 
 	prometheus.MustRegister(collector)
 	prometheus.MustRegister(collect_errors)
+	prometheus.MustRegister(collectUpnpResultsCached)
+	prometheus.MustRegister(collectUpnpResultsLoaded)
+
 	if luaSession != nil {
 		prometheus.MustRegister(lua_collect_errors)
+		prometheus.MustRegister(collectLuaResultsCached)
+		prometheus.MustRegister(collectLuaResultsLoaded)
 	}
 
 	http.Handle("/metrics", promhttp.Handler())

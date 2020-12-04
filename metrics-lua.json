@@ -42,7 +42,8 @@
                     "gateway", "name"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },       
         {
             "path": "data.lua",
@@ -57,7 +58,8 @@
                     "gateway", "name"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },
         {
             "path": "data.lua",
@@ -71,7 +73,8 @@
                     "gateway"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },
         {
             "path": "data.lua",
@@ -85,7 +88,8 @@
                     "gateway"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },        
         {
             "path": "data.lua",
@@ -102,7 +106,8 @@
                     "ram_type" : "Fixed" 
                 }
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },
         {
             "path": "data.lua",
@@ -119,7 +124,8 @@
                     "ram_type" : "Dynamic"
                 }
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },
         {
             "path": "data.lua",
@@ -136,7 +142,8 @@
                     "ram_type" : "Free" 
                 }
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },        
         {
             "path": "data.lua",
@@ -150,7 +157,8 @@
                     "gateway", "deviceType", "deviceName"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         },
         {
             "path": "data.lua",
@@ -164,7 +172,8 @@
                     "gateway", "deviceType", "deviceName"
                 ]
             },
-            "promType": "GaugeValue"
+            "promType": "GaugeValue",
+            "cacheEntryTTL": 300
         }        
     ]
 }
