@@ -92,13 +92,15 @@
             "params": "page=ecoStat",
             "resultPath": "data.ramusage.series.0",
             "resultKey": "-1",
-            "fixedLabels": { "ram_type" : "Fixed" },
             "promDesc": {
                 "fqName": "gateway_data_ecostat_ramusage",
                 "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
-                    "gateway", "ram_type"
-                ]
+                    "gateway"
+                ],
+                "fixedLabels": {
+                    "ram_type" : "Fixed" 
+                }
             },
             "promType": "GaugeValue"
         },
@@ -107,13 +109,15 @@
             "params": "page=ecoStat",
             "resultPath": "data.ramusage.series.1",
             "resultKey": "-1",
-            "fixedLabels": { "ram_type" : "Dynamic" },
             "promDesc": {
                 "fqName": "gateway_data_ecostat_ramusage",
                 "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
-                    "gateway", "ram_type"
-                ]
+                    "gateway"
+                ],
+                "fixedLabels": {
+                    "ram_type" : "Dynamic"
+                }
             },
             "promType": "GaugeValue"
         },
@@ -122,13 +126,15 @@
             "params": "page=ecoStat",
             "resultPath": "data.ramusage.series.2",
             "resultKey": "-1",
-            "fixedLabels": { "ram_type" : "Free" },
             "promDesc": {
                 "fqName": "gateway_data_ecostat_ramusage",
                 "help": "percentage of RAM utilization from data.lua?page=energy",
                 "varLabels": [
-                    "gateway", "ram_type"
-                ]
+                    "gateway"
+                ],
+                "fixedLabels": {
+                    "ram_type" : "Free" 
+                }
             },
             "promType": "GaugeValue"
         },        

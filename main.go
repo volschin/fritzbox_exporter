@@ -71,9 +71,10 @@ var (
 )
 
 type JSON_PromDesc struct {
-	FqName    string   `json:"fqName"`
-	Help      string   `json:"help"`
-	VarLabels []string `json:"varLabels"`
+	FqName      string            `json:"fqName"`
+	Help        string            `json:"help"`
+	VarLabels   []string          `json:"varLabels"`
+	FixedLabels map[string]string `json:"fixedLabels"`
 }
 
 type ActionArg struct {
@@ -110,14 +111,13 @@ type LuaLabelRename struct {
 
 type LuaMetric struct {
 	// initialized loading JSON
-	Path        string            `json:"path"`
-	Params      string            `json:"params"`
-	ResultPath  string            `json:"resultPath"`
-	ResultKey   string            `json:"resultKey"`
-	OkValue     string            `json:"okValue"`
-	FixedLabels map[string]string `json:"fixedLabels"`
-	PromDesc    JSON_PromDesc     `json:"promDesc"`
-	PromType    string            `json:"promType"`
+	Path       string        `json:"path"`
+	Params     string        `json:"params"`
+	ResultPath string        `json:"resultPath"`
+	ResultKey  string        `json:"resultKey"`
+	OkValue    string        `json:"okValue"`
+	PromDesc   JSON_PromDesc `json:"promDesc"`
+	PromType   string        `json:"promType"`
 
 	// initialized at startup
 	Desc         *prometheus.Desc
@@ -643,7 +643,7 @@ func main() {
 				labels[i] = strings.ToLower(l)
 			}
 
-			lm.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
+			lm.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, pd.FixedLabels)
 			lm.MetricType = getValueType(lm.PromType)
 
 			lm.LuaPage = lua.LuaPage{
@@ -652,11 +652,10 @@ func main() {
 			}
 
 			lm.LuaMetricDef = lua.LuaMetricValueDefinition{
-				Path:        lm.ResultPath,
-				Key:         lm.ResultKey,
-				OkValue:     lm.OkValue,
-				Labels:      pd.VarLabels,
-				FixedLabels: lm.FixedLabels,
+				Path:    lm.ResultPath,
+				Key:     lm.ResultKey,
+				OkValue: lm.OkValue,
+				Labels:  pd.VarLabels,
 			}
 		}
 

@@ -57,11 +57,10 @@ type LuaPage struct {
 
 // LuaMetricValueDefinition definition for a single metric
 type LuaMetricValueDefinition struct {
-	Path        string
-	Key         string
-	OkValue     string
-	Labels      []string
-	FixedLabels map[string]string
+	Path    string
+	Key     string
+	OkValue string
+	Labels  []string
 }
 
 // LuaMetricValue single value retrieved from lua page
@@ -108,10 +107,6 @@ func (lmvDef *LuaMetricValueDefinition) createValue(name string, value float64) 
 		Name:   name,
 		Value:  value,
 		Labels: make(map[string]string),
-	}
-
-	for l := range lmvDef.FixedLabels {
-		lmv.Labels[l] = lmvDef.FixedLabels[l]
 	}
 
 	return lmv
