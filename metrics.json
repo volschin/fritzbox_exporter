@@ -53,6 +53,74 @@
 	},
 	{
 		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+		"action": "GetTotalPacketsReceived",
+		"result": "TotalPacketsReceived",
+		"promDesc": {
+			"fqName": "gateway_wan_traffic",
+			"help": "traffic on gateway WAN interface",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"direction" : "Received",
+				"unit": "Packets"
+			}		
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+		"action": "GetTotalPacketsSent",
+		"result": "TotalPacketsSent",
+		"promDesc": {
+			"fqName": "gateway_wan_traffic",
+			"help": "traffic on gateway WAN interface",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"direction" : "Sent",
+				"unit": "Packets"
+			}		
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+		"action": "GetAddonInfos",
+		"result": "TotalBytesReceived",
+		"promDesc": {
+			"fqName": "gateway_wan_traffic",
+			"help": "traffic on gateway WAN interface",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"direction" : "Received",
+				"unit": "Bytes"
+			}		
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+		"action": "GetAddonInfos",
+		"result": "TotalBytesSent",
+		"promDesc": {
+			"fqName": "gateway_wan_traffic",
+			"help": "traffic on gateway WAN interface",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"direction" : "Sent",
+				"unit": "Bytes"
+			}		
+		},
+		"promType": "GaugeValue"
+	},	
+	{
+		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
 		"action": "GetAddonInfos",
 		"result": "ByteSendRate",
 		"promDesc": {

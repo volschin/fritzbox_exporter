@@ -743,7 +743,7 @@ func main() {
 			labels[i] = strings.ToLower(l)
 		}
 
-		m.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
+		m.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, pd.FixedLabels)
 		m.MetricType = getValueType(m.PromType)
 
 		// init TTL
