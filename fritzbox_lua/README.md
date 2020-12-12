@@ -7,6 +7,7 @@ There does not seem to be a complete documentation of the API, the authenticatio
 
 ## Details
 Most of the calls seem to be using the data.lua url with a http FORM POST request. As parameters the page and session id are required (e.g.: sid=<SID>&page=engery). The result is JSON with the data needed to create the respective UI.
+Some calls (like inetstat_monitor.lua) seem to use GET rather than POST, the client also supports them, but prefix GET: is needed, otherwise a post is done.
 
 Since no public documentation for the JSON format of the various pages seem to exist, you need to observe the calls made by the UI and analyse the JSON result. However the client should be generic enough to get metric and label values from all kind of nested hash and array structures contained in the JSONs.
 
