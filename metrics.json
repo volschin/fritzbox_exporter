@@ -4,58 +4,6 @@
 		"action": "GetTotalPacketsReceived",
 		"result": "TotalPacketsReceived",
 		"promDesc": {
-			"fqName": "gateway_wan_packets_received",
-			"help": "packets received on gateway WAN interface",
-			"varLabels": [
-				"gateway"
-			]
-		},
-		"promType": "CounterValue"
-	},
-	{
-		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
-		"action": "GetTotalPacketsSent",
-		"result": "TotalPacketsSent",
-		"promDesc": {
-			"fqName": "gateway_wan_packets_sent",
-			"help": "packets sent on gateway WAN interface",
-			"varLabels": [
-				"gateway"
-			]
-		},
-		"promType": "CounterValue"
-	},
-	{
-		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
-		"action": "GetAddonInfos",
-		"result": "TotalBytesReceived",
-		"promDesc": {
-			"fqName": "gateway_wan_bytes_received",
-			"help": "bytes received on gateway WAN interface",
-			"varLabels": [
-				"gateway"
-			]
-		},
-		"promType": "CounterValue"
-	},
-	{
-		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
-		"action": "GetAddonInfos",
-		"result": "TotalBytesSent",
-		"promDesc": {
-			"fqName": "gateway_wan_bytes_sent",
-			"help": "bytes sent on gateway WAN interface",
-			"varLabels": [
-				"gateway"
-			]
-		},
-		"promType": "CounterValue"
-	},
-	{
-		"service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
-		"action": "GetTotalPacketsReceived",
-		"result": "TotalPacketsReceived",
-		"promDesc": {
 			"fqName": "gateway_wan_traffic",
 			"help": "traffic on gateway WAN interface",
 			"varLabels": [
