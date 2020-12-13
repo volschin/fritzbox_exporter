@@ -20,7 +20,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "7.3.4"
+      "version": "7.3.5"
     },
     {
       "type": "panel",
@@ -110,7 +110,7 @@
         },
         "textMode": "value"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "expr": "gateway_device_modelname",
@@ -184,7 +184,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -308,7 +308,7 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -415,7 +415,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -526,7 +526,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -629,7 +629,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -753,7 +753,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -862,7 +862,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -984,7 +984,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1094,7 +1094,7 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1200,7 +1200,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1302,7 +1302,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1385,7 +1385,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1517,7 +1517,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1631,7 +1631,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1747,7 +1747,7 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1955,7 +1955,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2065,7 +2065,7 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2390,7 +2390,7 @@
           }
         ]
       },
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "targets": [
         {
           "expr": "gateway_host_active",
@@ -2505,13 +2505,13 @@
       "lines": false,
       "linewidth": 1,
       "links": [],
-      "maxDataPoints": 10,
+      "maxDataPoints": 12,
       "nullPointMode": "null",
       "options": {
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.4",
+      "pluginVersion": "7.3.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2523,7 +2523,7 @@
         {
           "alias": "Download",
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_received",
+          "expr": "gateway_wan_traffic{direction=\"Received\",unit=\"Bytes\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -2576,7 +2576,7 @@
         {
           "alias": "Upload",
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_sent",
+          "expr": "gateway_wan_traffic{direction=\"Sent\",unit=\"Bytes\"}",
           "groupBy": [
             {
               "params": [
@@ -2709,5 +2709,5 @@
   "timezone": "",
   "title": "FRITZ!Box Status",
   "uid": "000000013",
-  "version": 25
+  "version": 26
 }
