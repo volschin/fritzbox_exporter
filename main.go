@@ -94,10 +94,11 @@ var collectUpnpResultsLoaded = prometheus.NewCounter(prometheus.CounterOpts{
 
 // JSONPromDesc metric description loaded from JSON
 type JSONPromDesc struct {
-	FqName      string            `json:"fqName"`
-	Help        string            `json:"help"`
-	VarLabels   []string          `json:"varLabels"`
-	FixedLabels map[string]string `json:"fixedLabels"`
+	FqName           string            `json:"fqName"`
+	Help             string            `json:"help"`
+	VarLabels        []string          `json:"varLabels"`
+	FixedLabels      map[string]string `json:"fixedLabels"`
+	fixedLabelValues string            // neeeded to create uniq lookup key when reporting
 }
 
 // ActionArg argument for upnp action
@@ -242,7 +243,7 @@ func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result, dupCache *map[string]bool) {
+func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result, dupCache map[string]bool) {
 
 	val, ok := result[m.Result]
 	if !ok {
@@ -294,16 +295,13 @@ func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric
 	}
 
 	// check for duplicate labels to prevent collection failure
-	if dupCache != nil {
-		key := strings.Join(labels, ",")
-		if (*dupCache)[key] {
-			fmt.Printf("%s.%s reported before with labels: %s\n", m.Service, m.Action, key)
-			collectErrors.Inc()
-			return
-		} else {
-			(*dupCache)[key] = true
-		}
+	key := m.PromDesc.FqName + ":" + m.PromDesc.fixedLabelValues + strings.Join(labels, ",")
+	if dupCache[key] {
+		fmt.Printf("%s.%s reported before as: %s\n", m.Service, m.Action, key)
+		collectErrors.Inc()
+		return
 	}
+	dupCache[key] = true
 
 	metric, err := prometheus.NewConstMetric(m.Desc, m.MetricType, floatval, labels...)
 	if err != nil {
@@ -370,6 +368,9 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	// create cache for duplicate lookup, to prevent collection errors
+	var dupCache = make(map[string]bool)
+
 	for _, m := range metrics {
 		var actArg *upnp.ActionArgument
 		if m.ActionArgument != nil {
@@ -404,7 +405,6 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 
-				var dupCache = make(map[string]bool)
 				for i := 0; i < count; i++ {
 					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i}
 					result, err := fc.getActionResult(m, m.Action, actArg)
@@ -415,7 +415,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 						continue
 					}
 
-					fc.reportMetric(ch, m, result, &dupCache)
+					fc.reportMetric(ch, m, result, dupCache)
 				}
 
 				continue
@@ -432,16 +432,16 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		fc.reportMetric(ch, m, result, nil)
+		fc.reportMetric(ch, m, result, dupCache)
 	}
 
 	// if lua is enabled now also collect metrics
 	if fc.LuaSession != nil {
-		fc.collectLua(ch)
+		fc.collectLua(ch, dupCache)
 	}
 }
 
-func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric) {
+func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache map[string]bool) {
 	// create a map for caching results
 	now := time.Now().Unix()
 
@@ -489,12 +489,12 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric) {
 		}
 
 		for _, mv := range metricVals {
-			fc.reportLuaMetric(ch, lm, mv)
+			fc.reportLuaMetric(ch, lm, mv, dupCache)
 		}
 	}
 }
 
-func (fc *FritzboxCollector) reportLuaMetric(ch chan<- prometheus.Metric, lm *LuaMetric, value lua.LuaMetricValue) {
+func (fc *FritzboxCollector) reportLuaMetric(ch chan<- prometheus.Metric, lm *LuaMetric, value lua.LuaMetricValue, dupCache map[string]bool) {
 
 	labels := make([]string, len(lm.PromDesc.VarLabels))
 	for i, l := range lm.PromDesc.VarLabels {
@@ -515,6 +515,15 @@ func (fc *FritzboxCollector) reportLuaMetric(ch chan<- prometheus.Metric, lm *Lu
 			}
 		}
 	}
+
+	// check for duplicate labels to prevent collection failure
+	key := lm.PromDesc.FqName + ":" + lm.PromDesc.fixedLabelValues + strings.Join(labels, ",")
+	if dupCache[key] {
+		fmt.Printf("%s.%s reported before as: %s\n", lm.ResultPath, lm.ResultPath, key)
+		luaCollectErrors.Inc()
+		return
+	}
+	dupCache[key] = true
 
 	metric, err := prometheus.NewConstMetric(lm.Desc, lm.MetricType, value.Value, labels...)
 	if err != nil {
@@ -723,12 +732,18 @@ func main() {
 		// init metrics
 		luaMetrics = lmf.Metrics
 		for _, lm := range luaMetrics {
-			pd := lm.PromDesc
+			pd := &lm.PromDesc
 
 			// make labels lower case
 			labels := make([]string, len(pd.VarLabels))
 			for i, l := range pd.VarLabels {
 				labels[i] = strings.ToLower(l)
+			}
+
+			// create fixed labels values
+			pd.fixedLabelValues = ""
+			for _, flv := range pd.FixedLabels {
+				pd.fixedLabelValues += flv + ","
 			}
 
 			lm.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, pd.FixedLabels)
@@ -761,12 +776,18 @@ func main() {
 
 	// init metrics
 	for _, m := range metrics {
-		pd := m.PromDesc
+		pd := &m.PromDesc
 
 		// make labels lower case
 		labels := make([]string, len(pd.VarLabels))
 		for i, l := range pd.VarLabels {
 			labels[i] = strings.ToLower(l)
+		}
+
+		// create fixed labels values
+		pd.fixedLabelValues = ""
+		for _, flv := range pd.FixedLabels {
+			pd.fixedLabelValues += flv + ","
 		}
 
 		m.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, pd.FixedLabels)
