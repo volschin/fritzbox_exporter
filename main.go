@@ -242,7 +242,7 @@ func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result) {
+func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result, dupCache *map[string]bool) {
 
 	val, ok := result[m.Result]
 	if !ok {
@@ -293,11 +293,24 @@ func (fc *FritzboxCollector) reportMetric(ch chan<- prometheus.Metric, m *Metric
 		}
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		m.Desc,
-		m.MetricType,
-		floatval,
-		labels...)
+	// check for duplicate labels to prevent collection failure
+	if dupCache != nil {
+		key := strings.Join(labels, ",")
+		if (*dupCache)[key] {
+			fmt.Printf("%s.%s reported before with labels: %s\n", m.Service, m.Action, key)
+			collectErrors.Inc()
+			return
+		} else {
+			(*dupCache)[key] = true
+		}
+	}
+
+	metric, err := prometheus.NewConstMetric(m.Desc, m.MetricType, floatval, labels...)
+	if err != nil {
+		fmt.Printf("Error creating metric %s.%s: %s", m.Service, m.Action, err.Error())
+	} else {
+		ch <- metric
+	}
 }
 
 func (fc *FritzboxCollector) getActionResult(metric *Metric, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
@@ -391,6 +404,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 
+				var dupCache = make(map[string]bool)
 				for i := 0; i < count; i++ {
 					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i}
 					result, err := fc.getActionResult(m, m.Action, actArg)
@@ -401,7 +415,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 						continue
 					}
 
-					fc.reportMetric(ch, m, result)
+					fc.reportMetric(ch, m, result, &dupCache)
 				}
 
 				continue
@@ -418,7 +432,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		fc.reportMetric(ch, m, result)
+		fc.reportMetric(ch, m, result, nil)
 	}
 
 	// if lua is enabled now also collect metrics
@@ -502,11 +516,12 @@ func (fc *FritzboxCollector) reportLuaMetric(ch chan<- prometheus.Metric, lm *Lu
 		}
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		lm.Desc,
-		lm.MetricType,
-		value.Value,
-		labels...)
+	metric, err := prometheus.NewConstMetric(lm.Desc, lm.MetricType, value.Value, labels...)
+	if err != nil {
+		fmt.Printf("Error creating metric %s.%s: %s", lm.ResultPath, lm.ResultPath, err.Error())
+	} else {
+		ch <- metric
+	}
 }
 
 func test() {
