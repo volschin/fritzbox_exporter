@@ -20,7 +20,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "7.3.5"
+      "version": "7.3.6"
     },
     {
       "type": "panel",
@@ -110,7 +110,7 @@
         },
         "textMode": "value"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "expr": "gateway_device_modelname",
@@ -184,7 +184,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -308,11 +308,11 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_receive_rate*8",
+          "expr": "gateway_traffic_rate{direction=\"Received\",interface=\"WAN\"}*8",
           "format": "table",
           "groupBy": [
             {
@@ -415,11 +415,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{direction=\"Received\",unit=\"Bytes\"}",
+          "expr": "gateway_traffic{direction=\"Received\",unit=\"Bytes\",interface=\"WAN\"}",
           "format": "time_series",
           "groupBy": [],
           "instant": false,
@@ -526,11 +526,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{unit=\"Bytes\",direction=\"Received\"}",
+          "expr": "gateway_traffic{unit=\"Bytes\",direction=\"Received\",interface=\"WAN\"}",
           "groupBy": [],
           "interval": "",
           "legendFormat": "",
@@ -629,7 +629,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
@@ -753,11 +753,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_connection_status",
+          "expr": "gateway_connection_status{connection=\"IP\"}",
           "groupBy": [
             {
               "params": [
@@ -797,7 +797,7 @@
           "target": ""
         }
       ],
-      "title": "WAN Connection Status",
+      "title": "IP Connection Status",
       "type": "stat"
     },
     {
@@ -862,11 +862,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_connection_uptime_seconds",
+          "expr": "gateway_connection_uptime_seconds{connection=\"IP\"}",
           "groupBy": [
             {
               "params": [
@@ -984,11 +984,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_layer1_link_status",
+          "expr": "gateway_connection_status{connection=\"Physical Link\"}",
           "groupBy": [
             {
               "params": [
@@ -1094,11 +1094,11 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_send_rate*8",
+          "expr": "gateway_traffic_rate{direction=\"Sent\",interface=\"WAN\"}*8",
           "format": "table",
           "groupBy": [
             {
@@ -1200,11 +1200,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{direction=\"Sent\",unit=\"Bytes\"}",
+          "expr": "gateway_traffic{direction=\"Sent\",unit=\"Bytes\",interface=\"WAN\"}",
           "groupBy": [],
           "interval": "",
           "legendFormat": "",
@@ -1302,11 +1302,11 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{direction=\"Sent\",unit=\"Bytes\"}",
+          "expr": "gateway_traffic{direction=\"Sent\",unit=\"Bytes\",interface=\"WAN\"}",
           "groupBy": [],
           "interval": "",
           "legendFormat": "",
@@ -1385,7 +1385,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1517,7 +1517,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1631,26 +1631,20 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
           "expr": "gateway_wlan_current_connections",
           "interval": "",
-          "legendFormat": "2.4 GHz",
+          "legendFormat": "{{wlan}}",
           "refId": "A"
-        },
-        {
-          "expr": "gateway_wlan2_current_connections",
-          "interval": "",
-          "legendFormat": "5 GHz",
-          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -1674,7 +1668,8 @@
       "yaxes": [
         {
           "$$hashKey": "object:167",
-          "format": "short",
+          "decimals": 0,
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1730,12 +1725,12 @@
       "id": 18,
       "legend": {
         "alignAsTable": false,
-        "avg": false,
-        "current": true,
-        "max": false,
-        "min": false,
+        "avg": true,
+        "current": false,
+        "max": true,
+        "min": true,
         "rightSide": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": true
       },
@@ -1747,7 +1742,7 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1761,7 +1756,7 @@
         {
           "alias": "downstream",
           "dsType": "prometheus",
-          "expr": "gateway_wan_layer1_downstream_max_bitrate",
+          "expr": "gateway_connection_max_bitrate{direction=\"Down\"}",
           "fields": [
             {
               "func": "mean",
@@ -1784,7 +1779,7 @@
           ],
           "groupByTags": [],
           "interval": "",
-          "legendFormat": "Max. Downstream",
+          "legendFormat": "Limit",
           "measurement": "fritzbox_value",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1817,7 +1812,7 @@
         {
           "alias": "upstream",
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_receive_rate*8",
+          "expr": "gateway_traffic_rate{direction=\"Received\"}*8",
           "fields": [
             {
               "func": "mean",
@@ -1840,7 +1835,7 @@
           ],
           "groupByTags": [],
           "interval": "",
-          "legendFormat": "Download",
+          "legendFormat": "Used",
           "measurement": "fritzbox_value",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1875,7 +1870,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Download Bandwith Usage",
+      "title": "Download Bandwith",
       "tooltip": {
         "msResolution": false,
         "query_as_alias": true,
@@ -1955,7 +1950,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2048,12 +2043,13 @@
       "id": 27,
       "legend": {
         "alignAsTable": false,
-        "avg": false,
-        "current": true,
-        "max": false,
-        "min": false,
+        "avg": true,
+        "current": false,
+        "max": true,
+        "min": true,
         "rightSide": false,
-        "show": false,
+        "show": true,
+        "sideWidth": null,
         "total": false,
         "values": true
       },
@@ -2065,7 +2061,7 @@
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2079,7 +2075,7 @@
         {
           "alias": "downstream max",
           "dsType": "prometheus",
-          "expr": "gateway_wan_layer1_upstream_max_bitrate",
+          "expr": "gateway_connection_max_bitrate{direction=\"Up\"}",
           "fields": [
             {
               "func": "mean",
@@ -2102,7 +2098,7 @@
           ],
           "groupByTags": [],
           "interval": "",
-          "legendFormat": "Upstream",
+          "legendFormat": "Limit",
           "measurement": "fritzbox_value",
           "orderByTime": "ASC",
           "policy": "default",
@@ -2135,7 +2131,7 @@
         {
           "alias": "upstream max",
           "dsType": "prometheus",
-          "expr": "gateway_wan_bytes_send_rate*8",
+          "expr": "gateway_traffic_rate{direction=\"Sent\"}*8",
           "fields": [
             {
               "func": "mean",
@@ -2158,7 +2154,7 @@
           ],
           "groupByTags": [],
           "interval": "",
-          "legendFormat": "Upload",
+          "legendFormat": "Used",
           "measurement": "fritzbox_value",
           "orderByTime": "ASC",
           "policy": "default",
@@ -2193,7 +2189,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Upload Bandwith Usage",
+      "title": "Upload Bandwith",
       "tooltip": {
         "msResolution": false,
         "query_as_alias": true,
@@ -2390,7 +2386,7 @@
           }
         ]
       },
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "targets": [
         {
           "expr": "gateway_host_active",
@@ -2488,7 +2484,7 @@
       "hiddenSeries": false,
       "hideTimeOverride": false,
       "id": 2,
-      "interval": "10s",
+      "interval": "1h",
       "legend": {
         "alignAsTable": false,
         "avg": false,
@@ -2505,13 +2501,12 @@
       "lines": false,
       "linewidth": 1,
       "links": [],
-      "maxDataPoints": 12,
       "nullPointMode": "null",
       "options": {
         "alertThreshold": false
       },
       "percentage": false,
-      "pluginVersion": "7.3.5",
+      "pluginVersion": "7.3.6",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2523,7 +2518,7 @@
         {
           "alias": "Download",
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{direction=\"Received\",unit=\"Bytes\"}",
+          "expr": "increase(gateway_traffic{direction=\"Received\",unit=\"Bytes\", interface=\"WAN\"}[$__interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -2576,7 +2571,7 @@
         {
           "alias": "Upload",
           "dsType": "prometheus",
-          "expr": "gateway_wan_traffic{direction=\"Sent\",unit=\"Bytes\"}",
+          "expr": "increase(gateway_traffic{direction=\"Sent\",unit=\"Bytes\", interface=\"WAN\"}[$__interval])",
           "groupBy": [
             {
               "params": [
@@ -2626,10 +2621,10 @@
         }
       ],
       "thresholds": [],
-      "timeFrom": "24h",
+      "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Daily Traffic",
+      "title": "Hourly Traffic",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -2678,7 +2673,7 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {
@@ -2709,5 +2704,5 @@
   "timezone": "",
   "title": "FRITZ!Box Status",
   "uid": "000000013",
-  "version": 26
+  "version": 29
 }
