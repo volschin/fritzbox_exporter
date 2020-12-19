@@ -4,7 +4,7 @@
 		"action": "GetTotalPacketsReceived",
 		"result": "TotalPacketsReceived",
 		"promDesc": {
-			"fqName": "gateway_raffic",
+			"fqName": "gateway_traffic",
 			"help": "traffic on gateway interface",
 			"varLabels": [
 				"gateway"
