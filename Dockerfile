@@ -11,3 +11,4 @@ COPY --from=builder /go/bin/fritzbox_exporter .
 COPY metrics.json metrics-lua.json ./
 EXPOSE 9042
 ENTRYPOINT [ "./fritzbox_exporter" ]
+CMD ./fritzbox_exporter -username $USERNAME -password $PASSWORD -gateway-url ${GATEWAY_URL} -listen-address ${LISTEN_ADDRESS}
