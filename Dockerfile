@@ -2,7 +2,6 @@ FROM golang:rc-alpine3.13 AS builder
 RUN go get github.com/sberk42/fritzbox_exporter/
 
 FROM alpine:latest
-ARG USERNAME PASSWORD GWURL
 ENV USERNAME ${USERNAME} && \
 PASSWORD ${PASSWORD} && \
 GWURL ${GWURL}
