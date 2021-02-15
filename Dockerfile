@@ -2,9 +2,9 @@ FROM golang:rc-alpine3.13 AS builder
 RUN go get github.com/sberk42/fritzbox_exporter/
 
 FROM alpine:latest
-ENV USERNAME ${USERNAME} && \
-PASSWORD ${PASSWORD} && \
-GWURL ${GWURL}
+ENV USERNAME="username"
+ENV PASSWORD="password"
+ENV GATEWAY_URL="http://fritz.box:49000"
 WORKDIR /root/
 COPY --from=builder /go/bin/fritzbox_exporter . 
 COPY metrics.json metrics-lua.json ./
