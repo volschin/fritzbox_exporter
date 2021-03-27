@@ -462,6 +462,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 			if err != nil {
 				fmt.Printf("Error loading %s for %s.%s: %s\n", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
 				luaCollectErrors.Inc()
+				fc.LuaSession.SID = "" // clear SID in case of error, so force reauthentication
 				continue
 			}
 
@@ -485,6 +486,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 		if err != nil {
 			fmt.Printf("Error getting metric values for %s.%s: %s\n", lm.ResultPath, lm.ResultKey, err.Error())
 			luaCollectErrors.Inc()
+			cacheEntry.Result = nil // don't use invalid results for cache
 			continue
 		}
 
