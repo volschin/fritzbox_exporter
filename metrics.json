@@ -396,6 +396,42 @@
 		"promType": "GaugeValue"
 	},
 	{
+		"service": "urn:dslforum-org:service:WLANConfiguration:1",
+		"action": "GetInfo",
+		"result": "Status",
+		"okValue": "Up",
+		"promDesc": {
+			"fqName": "gateway_wlan_status",
+			"help": "WLAN status (Enabled = 1)",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"wlan": "2.4 Ghz"
+			}
+		},
+		"promType": "GaugeValue",
+		"cacheEntryTTL": 60
+	},
+	{
+		"service": "urn:dslforum-org:service:WLANConfiguration:2",
+		"action": "GetInfo",
+		"result": "Status",
+		"okValue": "Up",
+		"promDesc": {
+			"fqName": "gateway_wlan_status",
+			"help": "WLAN status (Enabled = 1)",
+			"varLabels": [
+				"gateway"
+			],
+			"fixedLabels": {
+				"wlan": "5 Ghz"
+			}
+		},
+		"promType": "GaugeValue",
+		"cacheEntryTTL": 60
+	},
+	{
 		"service": "urn:dslforum-org:service:DeviceInfo:1",
 		"action": "GetInfo",
 		"result": "UpTime",
