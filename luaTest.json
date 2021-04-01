@@ -30,5 +30,13 @@
     {
         "path": "data.lua",
         "params": "page=ecoStat"
+    },
+    {
+        "path": "GET:webservices/homeautoswitch.lua",
+        "params": "switchcmd=getdevicelistinfos"
+    }, 
+    {
+        "path": "GET:webservices/homeautoswitch.lua",
+        "params": "switchcmd=getbasicdevicestats"
     }
 ]

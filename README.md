@@ -4,7 +4,7 @@ This exporter exports some variables from an
 [AVM Fritzbox](http://avm.de/produkte/fritzbox/)
 to prometheus.
 
-This exporter is tested with a Fritzbox 7590 software version 07.12, 07.20 and 07.21.
+This exporter is tested with a Fritzbox 7590 software version 07.12, 07.20, 07.21 and 07.25.
 
 The goal of the fork is:
   - [x] allow passing of username / password using evironment variable
@@ -17,11 +17,11 @@ The goal of the fork is:
 Other changes:
   - replaced digest authentication code with own implementation
   - improved error messages
-  - **New:** test mode prints details about all SOAP Actions and their parameters
-  - **New:** collect option to directly test collection of results
-  - **New:** additional metrics to collect details about connected hosts and DECT devices
-  - **New:** support to use results like hostname or MAC address as labels to metrics
-  - **New:** support for metrics from lua APIs (e.g. CPU temperature, utilization, ...)
+  - test mode prints details about all SOAP Actions and their parameters
+  - collect option to directly test collection of results
+  - additional metrics to collect details about connected hosts and DECT devices
+  - support to use results like hostname or MAC address as labels to metrics
+  - support for metrics from lua APIs (e.g. CPU temperature, utilization, ...)
  
 
 ## Building
@@ -41,22 +41,28 @@ Usage:
     Usage of ./fritzbox_exporter:
       -gateway-url string
         The URL of the FRITZ!Box (default "http://fritz.box:49000")
-      -listen-address string
-        The address to listen on for HTTP requests. (default "127.0.0.1:9042")
+      -gateway-luaurl string
+        The URL of the FRITZ!Box UI (default "http://fritz.box")
       -metrics-file string
         The JSON file with the metric definitions. (default "metrics.json")
-      -password string
-        The password for the FRITZ!Box UPnP service
+      -lua-metrics-file string
+        The JSON file with the lua metric definitions. (default "metrics-lua.json")
       -test
         print all available SOAP calls and their results (if call possible) to stdout
+      -json-out string
+        store metrics also to JSON file when running test   
       -testLua
         read luaTest.json file make all contained calls and dump results
       -collect
         collect metrics once print to stdout and exit
-      -json-out string
-        store metrics also to JSON file when running test   
+      -nolua
+        disable collecting lua metrics
       -username string
         The user for the FRITZ!Box UPnP service
+      -password string
+        The password for the FRITZ!Box UPnP service
+      -listen-address string
+        The address to listen on for HTTP requests. (default "127.0.0.1:9042")
     
     The password (needed for metrics from TR-064 API) can be passed over environment variables to test in shell:
     read -rs PASSWORD && export PASSWORD && ./fritzbox_exporter -username <user> -test; unset PASSWORD
@@ -73,13 +79,14 @@ These values are determined by parsing all services from http://fritz.box:49000/
 
 ## Customizing metrics
 
-The metrics to collect are no longer hard coded, but have been moved to the [metrics.json](metrics.json) file, so just adjust to your needs.
+The metrics to collect are no longer hard coded, but have been moved to the [metrics.json](metrics.json) and [metrics-lua.json](metrics-lua.json) files, so just adjust to your needs.
 For a list of all the available metrics just execute the exporter with -test (username and password are needed for the TR-064 API!)
+For lua metrics open UI in browser and check the json files used for the various screens.
 
 For a list of all available metrics, see the dumps below (the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve):
 - [FritzBox 7590 v7.12](all_available_metrics_7590_7.12.json)
 - [FritzBox 7590 v7.20](all_available_metrics_7590_7.20.json)
-
+- [FritzBox 7590 v7.25](all_available_metrics_7590_7.25.json)
 ## Grafana Dashboard
 
 The dashboard is now also published on [Grafana](https://grafana.com/grafana/dashboards/12579).
