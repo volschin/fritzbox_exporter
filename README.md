@@ -120,6 +120,7 @@ For a list of all available metrics, see the dumps below (the format is the same
 - [FritzBox 7590 v7.12](all_available_metrics_7590_7.12.json)
 - [FritzBox 7590 v7.20](all_available_metrics_7590_7.20.json)
 - [FritzBox 7590 v7.25](all_available_metrics_7590_7.25.json)
+- [FritzBox 7590 v7.29](all_available_metrics_7590_7.29.json)
 ## Grafana Dashboard
 
 The dashboard is now also published on [Grafana](https://grafana.com/grafana/dashboards/12579).
