@@ -1,6 +1,6 @@
 module github.com/sberk42/fritzbox_exporter
 
-go 1.15
+go 1.16
 
 require (
 	github.com/namsral/flag v1.7.4-pre
