@@ -855,9 +855,9 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 	logrus.Infof("metrics available at http://%s/metrics", *flagAddr)
 	http.HandleFunc("/ready", healthChecks.ReadyEndpoint)
-	logrus.Infof("readyness check available at http://%s/ready\n", *flagAddr)
+	logrus.Infof("readyness check available at http://%s/ready", *flagAddr)
 	http.HandleFunc("/live", healthChecks.LiveEndpoint)
-	logrus.Infof("liveness check available at http://%s/live\n", *flagAddr)
+	logrus.Infof("liveness check available at http://%s/live", *flagAddr)
 
 	logrus.Error(http.ListenAndServe(*flagAddr, nil))
 }
