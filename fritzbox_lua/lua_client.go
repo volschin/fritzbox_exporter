@@ -78,8 +78,7 @@ type LabelRename struct {
 
 // regex to remove leading/training characters from numbers
 var (
-	regexNonNumberBegin = regexp.MustCompile("^\\D+")
-	regexNonNumberEnd   = regexp.MustCompile("\\D+$")
+	regexNonNumberEnd = regexp.MustCompile("\\D+$")
 )
 
 func (lua *LuaSession) doLogin(response string) error {
@@ -318,7 +317,7 @@ VALUE:
 		} else {
 			// convert value to float, but first remove all non numbers from begin or end of value
 			// needed if value contains unit
-			sNum := regexNonNumberEnd.ReplaceAllString(regexNonNumberBegin.ReplaceAllString(sVal, ""), "")
+			sNum := regexNonNumberEnd.ReplaceAllString(sVal, "")
 
 			floatVal, err = strconv.ParseFloat(sNum, 64)
 			if err != nil {
