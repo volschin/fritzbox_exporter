@@ -67,7 +67,6 @@ jobs:
 
           echo DOCKER_REPOSITORY=$DOCKER_REPOSITORY
           echo DOCKER_TAG=$DOCKER_TAG
-          echo FILES_CHANGED=${{ steps.changed_files.outputs.only_changed }}
           echo '::set-output name=DOCKER_REPOSITORY::'$DOCKER_REPOSITORY
           echo '::set-output name=DOCKER_TAG::'$DOCKER_TAG
 
@@ -76,7 +75,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    needs: [prepare, build_stage3]
+    needs: [prepare]
 
     steps:
       - name: Checkout
