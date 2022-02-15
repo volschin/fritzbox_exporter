@@ -22,7 +22,8 @@ ENV PASSWORD password
 ENV GATEWAY_URL http://fritz.box:49000
 ENV LISTEN_ADDRESS 0.0.0.0:9042
 
-RUN groupadd -g 1000 fritzbox \
+RUN mkdir /app \
+    && groupadd -g 1000 fritzbox \
     && useradd -r -u 1000 -g fritzbox fritzbox \
     && chown -R fritzbox:fritzbox /app
 
