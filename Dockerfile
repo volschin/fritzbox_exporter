@@ -23,8 +23,8 @@ ENV GATEWAY_URL http://fritz.box:49000
 ENV LISTEN_ADDRESS 0.0.0.0:9042
 
 RUN mkdir /app \
-    && groupadd -g 1000 fritzbox \
-    && useradd -r -u 1000 -g fritzbox fritzbox \
+    && addgroup -S -g 1000 fritzbox \
+    && adduser -S -u 1000 -G fritzbox fritzbox \
     && chown -R fritzbox:fritzbox /app
 
 WORKDIR /app
