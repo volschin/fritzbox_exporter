@@ -33,5 +33,5 @@ COPY --chown=fritzbox:fritzbox --from=builder /app /app
 
 EXPOSE 9042
 
-ENTRYPOINT [ "/app/fritzbox_exporter" ]
+ENTRYPOINT [ "sh", "-c", "/app/fritzbox_exporter" ]
 CMD [ "-username", "${USERNAME}", "-password", "${PASSWORD}", "-gateway-url", "${GATEWAY_URL}", "-listen-address", "${LISTEN_ADDRESS}" ]
