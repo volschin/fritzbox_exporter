@@ -36,7 +36,7 @@ jobs:
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v1.6.0
         with:
-          dockerfile: Dockerfile-github
+          dockerfile: Dockerfile
 
   prepare:
     runs-on: ubuntu-latest
@@ -95,7 +95,7 @@ jobs:
           context: .
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          file: Dockerfile-github
+          file: Dockerfile
           platforms: ${{ env.BUILD_PLATFORM }}
           push: false
 
@@ -127,7 +127,7 @@ jobs:
           context: .
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          file: Dockerfile-github
+          file: Dockerfile
           platforms: ${{ env.BUILD_PLATFORM }}
           push: true
           tags: |
