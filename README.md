@@ -26,9 +26,7 @@ Other changes:
 
 ## Building
 
-    go get github.com/sberk42/fritzbox_exporter/
-    cd $GOPATH/src/github.com/sberk42/fritzbox_exporter
-    go install
+    go install github.com/sberk42/fritzbox_exporter@latest
 
 ## Running
 
