@@ -164,6 +164,7 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 	callDone := false
 	var resp *http.Response
 	var err error
+	retries := 0
 	for !callDone {
 		// perform login if no SID or previous call failed with (403)
 		if lua.SID == "" || resp != nil {
@@ -199,9 +200,13 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 			callDone = true
 		} else if resp.StatusCode == http.StatusForbidden && !callDone {
 			// we assume SID is expired, so retry login
+		} else if retries < 1 {
+			// unexpected error let's retry (reboot issue ?)
 		} else {
 			return nil, fmt.Errorf("%s failed: %s", page.Path, resp.Status)
 		}
+
+		retries++
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
