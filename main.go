@@ -474,6 +474,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 			if err != nil {
 				logrus.Errorf("Can not parse JSON from %s for %s.%s: %s", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
 				luaCollectErrors.Inc()
+				fc.LuaSession.SID = "" // clear SID in case of error, so force reauthentication
 				continue
 			}
 
@@ -489,6 +490,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 		if err != nil {
 			logrus.Errorf("Can not get metric values for %s.%s: %s", lm.ResultPath, lm.ResultKey, err.Error())
 			luaCollectErrors.Inc()
+			fc.LuaSession.SID = ""  // clear SID in case of error, so force reauthentication
 			cacheEntry.Result = nil // don't use invalid results for cache
 			continue
 		}
