@@ -67,8 +67,8 @@ jobs:
 
           echo DOCKER_REPOSITORY=$DOCKER_REPOSITORY
           echo DOCKER_TAG=$DOCKER_TAG
-          echo 'name=DOCKER_REPOSITORY::'$DOCKER_REPOSITORY >> $GITHUB_OUTPUT
-          echo 'name=DOCKER_TAG::'$DOCKER_TAG >> $GITHUB_OUTPUT
+          echo '::set-output name=DOCKER_REPOSITORY::'$DOCKER_REPOSITORY
+          echo '::set-output name=DOCKER_TAG::'$DOCKER_TAG
 
   # Build and push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
