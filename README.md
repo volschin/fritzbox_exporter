@@ -35,7 +35,9 @@ Heimnetzübersicht > Netzwerkeinstellungen" has to be enabled.
 
 ### Using docker
 
-First you have to build the container: `docker build --tag fritzbox-prometheus-exporter:latest .`
+The image is available as package using:
+`docker pull ghcr.io/sberk42/fritzbox_exporter/fritzbox_exporter:latest`
+or you can build the container yourself: `docker build --tag fritzbox-prometheus-exporter:latest .`
 
 Then start the container:
 
