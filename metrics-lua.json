@@ -1,11 +1,11 @@
 {
     "labelRenames": [
         {
-            "matchRegex": "(?i)prozessor",
+            "matchRegex": "(?i)^(?:prozessor|processore)",
             "renameLabel": "CPU"
         },
         {
-            "matchRegex": "(?i)system",
+            "matchRegex": "(?i)^(?:system|sistema)",
             "renameLabel": "System"
         },
         {
@@ -177,4 +177,3 @@
         }        
     ]
 }
-
