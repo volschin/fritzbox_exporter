@@ -20,6 +20,7 @@ LABEL org.opencontainers.image.source https://github.com/${REPO}
 ENV USERNAME username
 ENV PASSWORD password
 ENV GATEWAY_URL http://fritz.box:49000
+ENV GATEWAY_LUAURL http://fritz.box
 ENV LISTEN_ADDRESS 0.0.0.0:9042
 
 RUN mkdir /app \
@@ -34,4 +35,4 @@ COPY --chown=fritzbox:fritzbox --from=builder /app /app
 EXPOSE 9042
 
 ENTRYPOINT [ "sh", "-c", "/app/fritzbox_exporter" ]
-CMD [ "-username", "${USERNAME}", "-password", "${PASSWORD}", "-gateway-url", "${GATEWAY_URL}", "-listen-address", "${LISTEN_ADDRESS}" ]
+CMD [ "-username", "${USERNAME}", "-password", "${PASSWORD}", "-gateway-url", "${GATEWAY_URL}", "-gateway-luaurl", "${GATEWAY_LUAURL}", "-listen-address", "${LISTEN_ADDRESS}" ]
