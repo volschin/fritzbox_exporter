@@ -4,7 +4,7 @@ on:
   # the 1st condition
   workflow_run:
     workflows: ["re-release"]
-    branches: [main]
+    branches: [master]
     types:
       - completed
 
