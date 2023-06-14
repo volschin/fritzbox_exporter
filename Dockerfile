@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build Image
-FROM golang:alpine3.15 AS builder
+FROM golang:1.19-alpine3.17 AS builder
 RUN go install github.com/sberk42/fritzbox_exporter@latest \
     && mkdir /app \
     && mv /go/bin/fritzbox_exporter /app
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY metrics.json metrics-lua.json /app/
 
 # Runtime Image
-FROM alpine:3.15 as runtime-image
+FROM alpine:3.17 as runtime-image
 
 ARG REPO=sberk42/fritzbox_exporter
 
@@ -20,6 +20,7 @@ LABEL org.opencontainers.image.source https://github.com/${REPO}
 ENV USERNAME username
 ENV PASSWORD password
 ENV GATEWAY_URL http://fritz.box:49000
+ENV GATEWAY_LUAURL http://fritz.box
 ENV LISTEN_ADDRESS 0.0.0.0:9042
 
 RUN mkdir /app \
@@ -34,4 +35,4 @@ COPY --chown=fritzbox:fritzbox --from=builder /app /app
 EXPOSE 9042
 
 ENTRYPOINT [ "sh", "-c", "/app/fritzbox_exporter" ]
-CMD [ "-username", "${USERNAME}", "-password", "${PASSWORD}", "-gateway-url", "${GATEWAY_URL}", "-listen-address", "${LISTEN_ADDRESS}" ]
+CMD [ "-username", "${USERNAME}", "-password", "${PASSWORD}", "-gateway-url", "${GATEWAY_URL}", "-gateway-luaurl", "${GATEWAY_LUAURL}", "-listen-address", "${LISTEN_ADDRESS}" ]

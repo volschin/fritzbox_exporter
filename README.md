@@ -4,7 +4,7 @@ This exporter exports some variables from an
 [AVM Fritzbox](http://avm.de/produkte/fritzbox/)
 to prometheus.
 
-This exporter is tested with a Fritzbox 7590 software version 07.12, 07.20, 07.21 and 07.25.
+This exporter is tested with a Fritzbox 7590 software version 07.12, 07.20, 07.21, 07.25, 07.29 and 07.50.
 
 The goal of the fork is:
   - [x] allow passing of username / password using evironment variable
@@ -35,7 +35,9 @@ Heimnetzübersicht > Netzwerkeinstellungen" has to be enabled.
 
 ### Using docker
 
-First you have to build the container: `docker build --tag fritzbox-prometheus-exporter:latest .`
+The image is available as package using:
+`docker pull ghcr.io/sberk42/fritzbox_exporter/fritzbox_exporter:latest`
+or you can build the container yourself: `docker build --tag fritzbox-prometheus-exporter:latest .`
 
 Then start the container:
 
@@ -120,6 +122,7 @@ For a list of all available metrics, see the dumps below (the format is the same
 - [FritzBox 7590 v7.20](all_available_metrics_7590_7.20.json)
 - [FritzBox 7590 v7.25](all_available_metrics_7590_7.25.json)
 - [FritzBox 7590 v7.29](all_available_metrics_7590_7.29.json)
+- [FritzBox 7590 v7.50](all_available_metrics_7590_7.50.json)
 ## Grafana Dashboard
 
 The dashboard is now also published on [Grafana](https://grafana.com/grafana/dashboards/12579).

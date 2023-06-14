@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -194,6 +195,12 @@ type FritzboxCollector struct {
 
 	sync.Mutex // protects Root
 	Root       *upnp.Root
+
+	// health checks
+	ReadyStatus string
+	Ready       bool
+	LiveStatus  string
+	Live        bool
 }
 
 // simple ResponseWriter to collect output
@@ -221,9 +228,12 @@ func (w *testResponseWriter) String() string {
 
 // LoadServices tries to load the service information. Retries until success.
 func (fc *FritzboxCollector) LoadServices() {
+	fc.ReadyStatus = "loading services"
+	fc.LiveStatus = "waiting for services loading"
 	for {
 		root, err := upnp.LoadServices(fc.URL, fc.Username, fc.Password, fc.VerifyTls)
 		if err != nil {
+			fc.ReadyStatus = "failed to load services"
 			logrus.Errorf("cannot load services: %s", err)
 
 			time.Sleep(serviceLoadRetryTime)
@@ -231,12 +241,43 @@ func (fc *FritzboxCollector) LoadServices() {
 		}
 
 		logrus.Info("services loaded")
+		fc.ReadyStatus = "services loaded"
+		fc.Ready = true
+
+		// set also live
+		fc.LiveStatus = "ready"
+		fc.Live = true
 
 		fc.Lock()
 		fc.Root = root
 		fc.Unlock()
 		return
 	}
+}
+
+// healthcheck functions
+func (fc *FritzboxCollector) ReadynessHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if fc.Ready {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+
+	io.WriteString(w, "{ \"status\":\""+fc.ReadyStatus+"\"}")
+}
+
+func (fc *FritzboxCollector) LivenessHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if fc.Live {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+
+	// is there something in promhttp that we could check?
+
+	io.WriteString(w, "{ \"status\":\""+fc.LiveStatus+"\"}")
 }
 
 // Describe describe metric
@@ -474,6 +515,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 			if err != nil {
 				logrus.Errorf("Can not parse JSON from %s for %s.%s: %s", lm.Path, lm.ResultPath, lm.ResultKey, err.Error())
 				luaCollectErrors.Inc()
+				fc.LuaSession.SID = "" // clear SID in case of error, so force reauthentication
 				continue
 			}
 
@@ -489,6 +531,7 @@ func (fc *FritzboxCollector) collectLua(ch chan<- prometheus.Metric, dupCache ma
 		if err != nil {
 			logrus.Errorf("Can not get metric values for %s.%s: %s", lm.ResultPath, lm.ResultKey, err.Error())
 			luaCollectErrors.Inc()
+			fc.LuaSession.SID = ""  // clear SID in case of error, so force reauthentication
 			cacheEntry.Result = nil // don't use invalid results for cache
 			continue
 		}
@@ -850,13 +893,11 @@ func main() {
 		prometheus.MustRegister(collectLuaResultsLoaded)
 	}
 
-	healthChecks := createHealthChecks(*flagGatewayURL)
-
 	http.Handle("/metrics", promhttp.Handler())
 	logrus.Infof("metrics available at http://%s/metrics", *flagAddr)
-	http.HandleFunc("/ready", healthChecks.ReadyEndpoint)
+	http.HandleFunc("/ready", collector.ReadynessHandler)
 	logrus.Infof("readyness check available at http://%s/ready", *flagAddr)
-	http.HandleFunc("/live", healthChecks.LiveEndpoint)
+	http.HandleFunc("/live", collector.LivenessHandler)
 	logrus.Infof("liveness check available at http://%s/live", *flagAddr)
 
 	logrus.Error(http.ListenAndServe(*flagAddr, nil))
