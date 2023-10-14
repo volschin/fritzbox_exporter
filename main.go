@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -58,6 +59,7 @@ var (
 	flagGatewayLuaURL    = flag.String("gateway-luaurl", "http://fritz.box", "The URL of the FRITZ!Box UI")
 	flagUsername         = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
 	flagPassword         = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
+	flagSessionApi       = flag.String("sessionapi", "v1", "Use the v1 md5 authentication (default) or the v2 pbkdf2 authentication")
 	flagGatewayVerifyTLS = flag.Bool("verifyTls", false, "Verify the tls connection when connecting to the FRITZ!Box")
 	flagLogLevel         = flag.String("log-level", "info", "The logging level. Can be error, warn, info, debug or trace")
 )
@@ -677,7 +679,7 @@ func testLua() {
 	}
 
 	// create session struct and init params
-	luaSession := lua.LuaSession{BaseURL: *flagGatewayLuaURL, Username: *flagUsername, Password: *flagPassword}
+	luaSession := lua.LuaSession{BaseURL: *flagGatewayLuaURL, Username: *flagUsername, Password: *flagPassword, ApiVer: *flagSessionApi}
 
 	for _, test := range luaTests {
 		page := lua.LuaPage{Path: test.Path, Params: test.Params}
@@ -718,6 +720,32 @@ func main() {
 		logrus.Errorf("invalid URL:", err)
 		return
 	}
+
+	// I have tested authentication against both hostname and ipv4 ip.
+	// It only seems to work against the latter. It doesn't really
+	// make sense but it is how it is.
+	//
+	// Here we try to figure out what ipv4 resolves to fritz.box
+	lu, err := url.Parse(*flagGatewayLuaURL)
+	if err != nil && *flagLuaTest {
+		logrus.Errorf("invalid LUA URL: %s", err.Error())
+		return
+	}
+	luahost := lu.Hostname()
+	if strings.Contains(luahost, "fritz.box") {
+		ips, err := net.LookupIP("fritz.box")
+		if err != nil {
+			logrus.Errorf("could not lookup fritz.box: %s", err.Error())
+			return
+		}
+		for _, ip := range ips {
+			if ip.To4() != nil {
+				luahost = fmt.Sprintf("http://%s", ip)
+				logrus.Infoln("Ip: ", ip)
+			}
+		}
+	}
+	*flagGatewayLuaURL = fmt.Sprintf("%s://%s", lu.Scheme, luahost)
 
 	if *flagTest {
 		test()
@@ -820,6 +848,7 @@ func main() {
 			BaseURL:  *flagGatewayLuaURL,
 			Username: *flagUsername,
 			Password: *flagPassword,
+			ApiVer:   *flagSessionApi,
 		}
 	}
 
