@@ -22,7 +22,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -76,9 +76,9 @@ type LabelRename struct {
 	Name    string
 }
 
-// regex to remove leading/training characters from numbers
+// regex to remove leading/trailing characters from numbers
 var (
-	regexNonNumberEnd = regexp.MustCompile("\\D+$")
+	regexNonNumberEnd = regexp.MustCompile(`\D+$`)
 )
 
 func (lua *LuaSession) doLogin(response string) error {
@@ -97,11 +97,11 @@ func (lua *LuaSession) doLogin(response string) error {
 
 	err = dec.Decode(&lua.SessionInfo)
 	if err != nil {
-		return fmt.Errorf("Error decoding SessionInfo: %s", err.Error())
+		return fmt.Errorf("error decoding SessionInfo: %s", err.Error())
 	}
 
 	if lua.SessionInfo.BlockTime > 0 {
-		return fmt.Errorf("To many failed logins, login blocked for %d seconds", lua.SessionInfo.BlockTime)
+		return fmt.Errorf("too many failed logins, login blocked for %d seconds", lua.SessionInfo.BlockTime)
 	}
 
 	return nil
@@ -209,7 +209,7 @@ func (lua *LuaSession) LoadData(page LuaPage) ([]byte, error) {
 		retries++
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return nil, err
