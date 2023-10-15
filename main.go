@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -454,7 +454,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 					result, err := fc.getActionResult(m, m.Action, actArg)
 
 					if err != nil {
-						logrus.Error("Can not get result for %s: %s", m.Action, err)
+						logrus.Errorf("can not get result for %s: %s", m.Action, err)
 						collectErrors.Inc()
 						continue
 					}
@@ -654,7 +654,7 @@ func test() {
 	json.WriteString("\n]")
 
 	if *flagJSONOut != "" {
-		err := ioutil.WriteFile(*flagJSONOut, json.Bytes(), 0644)
+		err := os.WriteFile(*flagJSONOut, json.Bytes(), 0644)
 		if err != nil {
 			logrus.Warnf("Failed writing JSON file '%s': %s\n", *flagJSONOut, err.Error())
 		}
@@ -663,7 +663,7 @@ func test() {
 
 func testLua() {
 
-	jsonData, err := ioutil.ReadFile("luaTest.json")
+	jsonData, err := os.ReadFile("luaTest.json")
 	if err != nil {
 		logrus.Error("Can not read luaTest.json: ", err)
 		return
@@ -686,7 +686,7 @@ func testLua() {
 		if err != nil {
 			logrus.Errorf("Testing %s (%s) failed: %s", test.Path, test.Params, err.Error())
 		} else {
-			logrus.Infof("Testing %s(%s) successful: %s", test.Path, test.Params, string(pageData))
+			logrus.Infof("Testing %s (%s) successful: %s", test.Path, test.Params, string(pageData))
 		}
 	}
 }
@@ -715,7 +715,7 @@ func main() {
 
 	u, err := url.Parse(*flagGatewayURL)
 	if err != nil {
-		logrus.Errorf("invalid URL:", err)
+		logrus.Errorf("invalid URL: %s", err.Error())
 		return
 	}
 
@@ -730,15 +730,15 @@ func main() {
 	}
 
 	// read metrics
-	jsonData, err := ioutil.ReadFile(*flagMetricsFile)
+	jsonData, err := os.ReadFile(*flagMetricsFile)
 	if err != nil {
-		logrus.Errorf("error reading metric file:", err)
+		logrus.Errorf("error reading metric file: %s", err.Error())
 		return
 	}
 
 	err = json.Unmarshal(jsonData, &metrics)
 	if err != nil {
-		logrus.Errorf("error parsing JSON:", err)
+		logrus.Errorf("error parsing JSON: %s", err.Error())
 		return
 	}
 
@@ -748,7 +748,7 @@ func main() {
 	var luaSession *lua.LuaSession
 	var luaLabelRenames *[]lua.LabelRename
 	if !*flagDisableLua {
-		jsonData, err := ioutil.ReadFile(*flagLuaMetricsFile)
+		jsonData, err := os.ReadFile(*flagLuaMetricsFile)
 		if err != nil {
 			logrus.Error("error reading lua metric file:", err)
 			return
