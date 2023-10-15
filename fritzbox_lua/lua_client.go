@@ -18,16 +18,21 @@ package lua_client
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -46,6 +51,8 @@ type LuaSession struct {
 	Username    string
 	Password    string
 	SID         string
+	ApiVer      string
+	Client      http.Client
 	SessionInfo SessionInfo
 }
 
@@ -81,15 +88,35 @@ var (
 	regexNonNumberEnd = regexp.MustCompile(`\D+$`)
 )
 
-func (lua *LuaSession) doLogin(response string) error {
-	urlParams := ""
-	if response != "" {
-		urlParams = fmt.Sprintf("?response=%s&user=%s", response, lua.Username)
+func (lua *LuaSession) v2Login(response string) error {
+	logrus.Debugln("using LoginApi v2")
+	res := url.Values{}
+	res.Set("username", lua.Username)
+	res.Set("response", response)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/login_sid.lua?version=2", lua.BaseURL), strings.NewReader(res.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		return fmt.Errorf("error forming request: %s", err.Error())
 	}
 
-	resp, err := http.Get(fmt.Sprintf("%s/login_sid.lua%s", lua.BaseURL, urlParams))
+	return lua.doLogin(req)
+}
+
+func (lua *LuaSession) v1Login(response string) error {
+	logrus.Debugln("using LoginApi v1")
+	urlParams := fmt.Sprintf("?response=%s&user=%s", response, lua.Username)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/login_sid.lua%s", lua.BaseURL, urlParams), nil)
 	if err != nil {
-		return fmt.Errorf("Error calling login_sid.lua: %s", err.Error())
+		return fmt.Errorf("error forming request: %s", err.Error())
+	}
+
+	return lua.doLogin(req)
+}
+
+func (lua *LuaSession) doLogin(req *http.Request) error {
+	resp, err := lua.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error calling login_sid.lua: %s", err.Error())
 	}
 
 	defer resp.Body.Close()
@@ -103,7 +130,33 @@ func (lua *LuaSession) doLogin(response string) error {
 	if lua.SessionInfo.BlockTime > 0 {
 		return fmt.Errorf("too many failed logins, login blocked for %d seconds", lua.SessionInfo.BlockTime)
 	}
+	return nil
+}
 
+func (lua *LuaSession) initLogin() error {
+	var version string
+	switch lua.ApiVer {
+	case "v1":
+		version = ""
+	case "v2":
+		version = "?version=2"
+	}
+
+	resp, err := http.Get(fmt.Sprintf("%s/login_sid.lua%s", lua.BaseURL, version))
+	if err != nil {
+		return fmt.Errorf("error calling login_sid.lua: %s", err.Error())
+	}
+	defer resp.Body.Close()
+	dec := xml.NewDecoder(resp.Body)
+
+	err = dec.Decode(&lua.SessionInfo)
+	if err != nil {
+		return fmt.Errorf("error decoding SessionInfo: %s", err.Error())
+	}
+
+	if lua.SessionInfo.BlockTime > 0 {
+		return fmt.Errorf("too many failed logins, login blocked for %d seconds", lua.SessionInfo.BlockTime)
+	}
 	return nil
 }
 
@@ -119,21 +172,28 @@ func (lmvDef *LuaMetricValueDefinition) createValue(name string, value float64) 
 
 // Login perform loing and get SID
 func (lua *LuaSession) Login() error {
-
-	err := lua.doLogin("")
+	err := lua.initLogin()
 	if err != nil {
 		return err
 	}
 
 	challenge := lua.SessionInfo.Challenge
 	if lua.SessionInfo.SID == "0000000000000000" && challenge != "" {
-		// no SID, but challenge so calc response
-		hash := utf16leMd5(fmt.Sprintf("%s-%s", challenge, lua.Password))
-		response := fmt.Sprintf("%s-%x", challenge, hash)
-		err := lua.doLogin(response)
-
-		if err != nil {
-			return err
+		switch lua.ApiVer {
+		case "v1":
+			// no SID, but challenge so calc response
+			hash := utf16leMd5(fmt.Sprintf("%s-%s", challenge, lua.Password))
+			response := fmt.Sprintf("%s-%x", challenge, hash)
+			err := lua.v1Login(response)
+			if err != nil {
+				return err
+			}
+		case "v2":
+			response := calculatePbkdf2Response(challenge, lua.Password)
+			err := lua.v2Login(response)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -365,6 +425,20 @@ func utf16leMd5(s string) []byte {
 	t := transform.NewWriter(hasher, enc)
 	t.Write([]byte(s))
 	return hasher.Sum(nil)
+}
+
+// v2 authentication according to https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AVM_Technical_Note_-_Session_ID_english_2021-05-03.pdf
+func calculatePbkdf2Response(challenge, password string) string {
+	challengeParts := strings.Split(challenge, "$")
+	iter1, _ := strconv.Atoi(challengeParts[1])
+	iter2, _ := strconv.Atoi(challengeParts[3])
+	salt1, _ := hex.DecodeString(challengeParts[2])
+	salt2, _ := hex.DecodeString(challengeParts[4])
+	hash1_raw := pbkdf2.Key([]byte(password), salt1, iter1, 32, sha256.New)
+	hash2_raw := pbkdf2.Key(hash1_raw, salt2, iter2, 32, sha256.New)
+	hash2 := hex.EncodeToString(hash2_raw)
+	raw := fmt.Sprintf("%s$%s", challengeParts[4], hash2)
+	return raw
 }
 
 // helper for retrieving values from parsed JSON
