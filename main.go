@@ -740,7 +740,7 @@ func main() {
 		}
 		for _, ip := range ips {
 			if ip.To4() != nil {
-				luahost = fmt.Sprintf("http://%s", ip)
+				luahost = ip.String()
 				logrus.Infoln("Ip: ", ip)
 			}
 		}
