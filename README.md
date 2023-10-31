@@ -30,6 +30,15 @@ Other changes:
 
 ## Running
 
+Create a new user account for the exporter on the Fritzbox using the login credentials: 
+```bash
+USERNAME=your_fritzbox_username
+PASSWORD=your_fritzbox_password
+```
+Grant this user access to the following features: 
+FRITZ!Box settings, voice messages, fax messages, FRITZ!App Fon and call list, 
+Smart Home, access to NAS content, and VPN.
+
 In the configuration of the Fritzbox the option "Statusinformationen über UPnP übertragen" in the dialog "Heimnetz >
 Heimnetzübersicht > Netzwerkeinstellungen" has to be enabled.
 
