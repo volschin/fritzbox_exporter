@@ -30,6 +30,15 @@ Other changes:
 
 ## Running
 
+Create a new user account for the exporter on the Fritzbox using the login credentials: 
+```bash
+USERNAME=your_fritzbox_username
+PASSWORD=your_fritzbox_password
+```
+Grant this user access to the following features: 
+FRITZ!Box settings, voice messages, fax messages, FRITZ!App Fon and call list, 
+Smart Home, access to NAS content, and VPN.
+
 In the configuration of the Fritzbox the option "Statusinformationen über UPnP übertragen" in the dialog "Heimnetz >
 Heimnetzübersicht > Netzwerkeinstellungen" has to be enabled.
 
@@ -118,11 +127,13 @@ For lua metrics open UI in browser and check the json files used for the various
 
 For a list of all available metrics, see the dumps below (the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve):
 - [FritzBox 6591 v7.29](all_available_metrics_6591_7.29.json)
+- [FritzBox 6690 v7.57](all_available_metrics_6690_7.57.json)
 - [FritzBox 7590 v7.12](all_available_metrics_7590_7.12.json)
 - [FritzBox 7590 v7.20](all_available_metrics_7590_7.20.json)
 - [FritzBox 7590 v7.25](all_available_metrics_7590_7.25.json)
 - [FritzBox 7590 v7.29](all_available_metrics_7590_7.29.json)
 - [FritzBox 7590 v7.50](all_available_metrics_7590_7.50.json)
+- [FritzBox 7590 v7.57](all_available_metrics_7590_7.57.json)
 ## Grafana Dashboard
 
 The dashboard is now also published on [Grafana](https://grafana.com/grafana/dashboards/12579).

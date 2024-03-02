@@ -19,9 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -58,6 +59,7 @@ var (
 	flagGatewayLuaURL    = flag.String("gateway-luaurl", "http://fritz.box", "The URL of the FRITZ!Box UI")
 	flagUsername         = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
 	flagPassword         = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
+	flagSessionApi       = flag.String("sessionapi", "v1", "Use the v1 md5 authentication (default) or the v2 pbkdf2 authentication")
 	flagGatewayVerifyTLS = flag.Bool("verifyTls", false, "Verify the tls connection when connecting to the FRITZ!Box")
 	flagLogLevel         = flag.String("log-level", "info", "The logging level. Can be error, warn, info, debug or trace")
 )
@@ -454,7 +456,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 					result, err := fc.getActionResult(m, m.Action, actArg)
 
 					if err != nil {
-						logrus.Error("Can not get result for %s: %s", m.Action, err)
+						logrus.Errorf("can not get result for %s: %s", m.Action, err)
 						collectErrors.Inc()
 						continue
 					}
@@ -654,7 +656,7 @@ func test() {
 	json.WriteString("\n]")
 
 	if *flagJSONOut != "" {
-		err := ioutil.WriteFile(*flagJSONOut, json.Bytes(), 0644)
+		err := os.WriteFile(*flagJSONOut, json.Bytes(), 0644)
 		if err != nil {
 			logrus.Warnf("Failed writing JSON file '%s': %s\n", *flagJSONOut, err.Error())
 		}
@@ -663,7 +665,7 @@ func test() {
 
 func testLua() {
 
-	jsonData, err := ioutil.ReadFile("luaTest.json")
+	jsonData, err := os.ReadFile("luaTest.json")
 	if err != nil {
 		logrus.Error("Can not read luaTest.json: ", err)
 		return
@@ -677,7 +679,7 @@ func testLua() {
 	}
 
 	// create session struct and init params
-	luaSession := lua.LuaSession{BaseURL: *flagGatewayLuaURL, Username: *flagUsername, Password: *flagPassword}
+	luaSession := lua.LuaSession{BaseURL: *flagGatewayLuaURL, Username: *flagUsername, Password: *flagPassword, ApiVer: *flagSessionApi}
 
 	for _, test := range luaTests {
 		page := lua.LuaPage{Path: test.Path, Params: test.Params}
@@ -686,7 +688,7 @@ func testLua() {
 		if err != nil {
 			logrus.Errorf("Testing %s (%s) failed: %s", test.Path, test.Params, err.Error())
 		} else {
-			logrus.Infof("Testing %s(%s) successful: %s", test.Path, test.Params, string(pageData))
+			logrus.Infof("Testing %s (%s) successful: %s", test.Path, test.Params, string(pageData))
 		}
 	}
 }
@@ -715,9 +717,35 @@ func main() {
 
 	u, err := url.Parse(*flagGatewayURL)
 	if err != nil {
-		logrus.Errorf("invalid URL:", err)
+		logrus.Errorf("invalid URL: %s", err.Error())
 		return
 	}
+
+	// I have tested authentication against both hostname and ipv4 ip.
+	// It only seems to work against the latter. It doesn't really
+	// make sense but it is how it is.
+	//
+	// Here we try to figure out what ipv4 resolves to fritz.box
+	lu, err := url.Parse(*flagGatewayLuaURL)
+	if err != nil && *flagLuaTest {
+		logrus.Errorf("invalid LUA URL: %s", err.Error())
+		return
+	}
+	luahost := lu.Hostname()
+	if strings.Contains(luahost, "fritz.box") {
+		ips, err := net.LookupIP("fritz.box")
+		if err != nil {
+			logrus.Errorf("could not lookup fritz.box: %s", err.Error())
+			return
+		}
+		for _, ip := range ips {
+			if ip.To4() != nil {
+				luahost = ip.String()
+				logrus.Infoln("Ip: ", ip)
+			}
+		}
+	}
+	*flagGatewayLuaURL = fmt.Sprintf("%s://%s", lu.Scheme, luahost)
 
 	if *flagTest {
 		test()
@@ -730,15 +758,15 @@ func main() {
 	}
 
 	// read metrics
-	jsonData, err := ioutil.ReadFile(*flagMetricsFile)
+	jsonData, err := os.ReadFile(*flagMetricsFile)
 	if err != nil {
-		logrus.Errorf("error reading metric file:", err)
+		logrus.Errorf("error reading metric file: %s", err.Error())
 		return
 	}
 
 	err = json.Unmarshal(jsonData, &metrics)
 	if err != nil {
-		logrus.Errorf("error parsing JSON:", err)
+		logrus.Errorf("error parsing JSON: %s", err.Error())
 		return
 	}
 
@@ -748,7 +776,7 @@ func main() {
 	var luaSession *lua.LuaSession
 	var luaLabelRenames *[]lua.LabelRename
 	if !*flagDisableLua {
-		jsonData, err := ioutil.ReadFile(*flagLuaMetricsFile)
+		jsonData, err := os.ReadFile(*flagLuaMetricsFile)
 		if err != nil {
 			logrus.Error("error reading lua metric file:", err)
 			return
@@ -820,6 +848,7 @@ func main() {
 			BaseURL:  *flagGatewayLuaURL,
 			Username: *flagUsername,
 			Password: *flagPassword,
+			ApiVer:   *flagSessionApi,
 		}
 	}
 
