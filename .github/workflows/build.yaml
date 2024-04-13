@@ -8,13 +8,10 @@ on:
     types:
       - completed
 
-permissions:
-  contents: read
-
 jobs:
   build_linux:
     permissions:
-      contents: write
+      contents: read
       packages: write
 
     name: Build Go Binary
