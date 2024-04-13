@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build Image
-FROM golang:1.21-alpine3.18 AS builder
+FROM golang:1.21-alpine3.18@sha256:b09322e4dc407962c34a2a40b1bda49cb9b0bebafd87411c32ac093a3fbc0d75 AS builder
 RUN go install github.com/sberk42/fritzbox_exporter@latest \
     && mkdir /app \
     && mv /go/bin/fritzbox_exporter /app
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY metrics.json metrics-lua.json /app/
 
 # Runtime Image
-FROM alpine:3.18 as runtime-image
+FROM alpine:3.18@sha256:11e21d7b981a59554b3f822c49f6e9f57b6068bb74f49c4cd5cc4c663c7e5160 as runtime-image
 
 ARG REPO=sberk42/fritzbox_exporter
 
