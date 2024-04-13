@@ -11,7 +11,7 @@ on:
 jobs:
   build_linux:
     permissions:
-      contents: read
+      contents: write # needed for release action
       packages: write
 
     name: Build Go Binary
