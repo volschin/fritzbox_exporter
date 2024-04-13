@@ -5,22 +5,30 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   re-release:
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Delete
-        uses: ame-yu/action-delete-latest-release@v2
+        uses: ame-yu/action-delete-latest-release@725c31f47c731521facc6f5444879a3c647e825f # v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           name: latest
           tag_name: latest
