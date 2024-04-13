@@ -5,9 +5,6 @@ on:
     branches:
       - master
 
-permissions:
-  contents: read
-
 jobs:
   re-release:
     permissions:
@@ -23,9 +20,13 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Delete
-        uses: ame-yu/action-delete-latest-release@725c31f47c731521facc6f5444879a3c647e825f # v2
+        uses: actions/github-script@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const { owner, repo } = context.repo
+            const { data: { id } } = await github.repos.getLatestRelease({ owner, repo })
+            await github.repos.deleteRelease({ owner, repo, release_id: id })
 
       - name: Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
